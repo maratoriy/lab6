@@ -7,7 +7,7 @@ import application.controller.actions.ActionManager;
 import application.controller.commands.AbstractCommand;
 import application.controller.commands.CommandParameters;
 import application.controller.input.InputManager;
-import application.controller.view.ConsolePrinter;
+import application.view.ConsolePrinter;
 
 public class AddCommand<T extends CollectionItem> extends AbstractCommand {
     private final CollectionManager<T> collectionManager;

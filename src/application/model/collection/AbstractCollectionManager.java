@@ -3,7 +3,7 @@ package application.model.collection;
 import application.model.collection.exceptions.EmptyCollectionException;
 import application.model.collection.exceptions.NoSuchElemException;
 import application.model.parse.DomParseable;
-import application.controller.view.StringTable;
+import application.view.StringTable;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;

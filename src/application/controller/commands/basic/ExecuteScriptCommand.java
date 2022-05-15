@@ -4,7 +4,7 @@ import application.controller.commands.AbstractCommand;
 import application.controller.commands.CommandParameters;
 import application.controller.input.InputManager;
 import application.controller.input.ScriptInputStrategy;
-import application.controller.view.ConsolePrinter;
+import application.view.ConsolePrinter;
 
 public class ExecuteScriptCommand extends AbstractCommand {
     private final InputManager inputManager;

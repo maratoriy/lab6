@@ -1,4 +1,4 @@
-package application.controller.view;
+package application.view;
 
 import java.util.Collections;
 import java.util.LinkedList;

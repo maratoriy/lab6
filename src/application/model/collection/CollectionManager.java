@@ -1,9 +1,8 @@
 package application.model.collection;
 
-import application.controller.view.StringTable;
+import application.view.StringTable;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.Predicate;
 

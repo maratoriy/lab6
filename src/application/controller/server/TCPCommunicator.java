@@ -56,10 +56,10 @@ public class TCPCommunicator implements BasicController {
     @Override
     public void run() {
         try {
-            Thread.sleep(100);
             state = State.RUNNING;
             appClient.pushForwardTask(ClientTask.writeTask(CommunicatingHandler.Message.STARTED));
             TCPServer.write(key);
+            Thread.sleep(100);
             while(state==State.RUNNING&&appClient.haveTask()) {
                 selector.select();
                 Iterator<SelectionKey> keyIterator = selector.selectedKeys().iterator();
@@ -71,7 +71,6 @@ public class TCPCommunicator implements BasicController {
                     }
                     if (key.isReadable()) {
                         TCPServer.read(key, firstHandler);
-                        Thread.sleep(5);
                     }
                 }
             }

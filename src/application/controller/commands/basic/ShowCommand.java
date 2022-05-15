@@ -3,8 +3,8 @@ package application.controller.commands.basic;
 import application.model.collection.CollectionManager;
 import application.controller.commands.AbstractCommand;
 import application.controller.commands.CommandParameters;
-import application.controller.view.ConsolePrinter;
-import application.controller.view.ConsoleTable;
+import application.view.ConsolePrinter;
+import application.view.ConsoleTable;
 
 public class ShowCommand extends AbstractCommand {
     private final CollectionManager<?> collectionManager;

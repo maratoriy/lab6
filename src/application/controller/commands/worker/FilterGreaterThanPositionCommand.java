@@ -1,9 +1,9 @@
 package application.controller.commands.worker;
 
 import application.controller.commands.exceptions.InvalidCommandParamException;
-import application.controller.view.ConsolePrinter;
-import application.controller.view.ConsoleTable;
-import application.controller.view.StringTable;
+import application.view.ConsolePrinter;
+import application.view.ConsoleTable;
+import application.view.StringTable;
 import application.model.collection.AbstractCollectionManager;
 import application.model.collection.CollectionManager;
 import application.model.data.worker.Position;

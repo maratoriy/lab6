@@ -1,6 +1,6 @@
 package application.controller.commands.worker;
 
-import application.controller.view.ConsolePrinter;
+import application.view.ConsolePrinter;
 import application.model.collection.CollectionManager;
 import application.model.data.worker.Worker;
 import application.controller.commands.AbstractCommand;

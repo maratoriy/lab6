@@ -7,7 +7,7 @@ import application.controller.commands.AbstractCommand;
 import application.controller.commands.CommandParameters;
 import application.controller.commands.exceptions.CommandException;
 import application.controller.commands.exceptions.InvalidCommandParamException;
-import application.controller.view.ConsolePrinter;
+import application.view.ConsolePrinter;
 
 
 public class CountByPositionCommand<T extends Worker> extends AbstractCommand {

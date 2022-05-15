@@ -4,7 +4,7 @@ import application.model.collection.CollectionManager;
 import application.controller.commands.AbstractCommand;
 import application.controller.commands.CommandParameters;
 import application.controller.commands.exceptions.InvalidCommandParamException;
-import application.controller.view.ConsolePrinter;
+import application.view.ConsolePrinter;
 
 public class RemoveByIdCommand extends AbstractCommand {
     private final CollectionManager<?> collectionManager;

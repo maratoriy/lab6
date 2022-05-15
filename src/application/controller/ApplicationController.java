@@ -17,7 +17,7 @@ import application.controller.input.ScriptInputStrategy;
 import application.controller.input.StrategyType;
 import application.controller.input.exceptions.EndOfTheScriptException;
 import application.controller.input.exceptions.OverLoadedScriptException;
-import application.controller.view.ConsolePrinter;
+import application.view.ConsolePrinter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -87,7 +87,6 @@ public class ApplicationController<T extends CollectionItem> implements SavableC
                 );
                 actionManager.act();
                 actionManager.poll();
-                Thread.sleep(25);
             } catch (CommandException | CollectionException | ServerException e) {
                 if (inputManager.getType() == StrategyType.SCRIPT) consoleMode();
                 ConsolePrinter.printError(e.getMessage());
@@ -104,7 +103,7 @@ public class ApplicationController<T extends CollectionItem> implements SavableC
             } catch (OverLoadedScriptException e) {
                 consoleMode();
                 ConsolePrinter.printError(e.getMessage());
-            } catch (CriticalErrorException | InterruptedException e) {
+            } catch (CriticalErrorException e) {
                 ConsolePrinter.printError(e.getMessage());
                 Runtime.getRuntime().removeShutdownHook(shutdownHook);
                 close();

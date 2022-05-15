@@ -8,7 +8,7 @@ import application.controller.commands.AbstractCommand;
 import application.controller.commands.CommandParameters;
 import application.controller.commands.exceptions.InvalidCommandParamException;
 import application.controller.input.InputManager;
-import application.controller.view.ConsolePrinter;
+import application.view.ConsolePrinter;
 
 public class InsertAtCommand<T extends CollectionItem> extends AbstractCommand {
     private final CollectionManager<T> collectionManager;

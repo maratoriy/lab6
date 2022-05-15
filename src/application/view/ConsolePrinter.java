@@ -1,4 +1,4 @@
-package application.controller.view;
+package application.view;
 
 public class ConsolePrinter {
 

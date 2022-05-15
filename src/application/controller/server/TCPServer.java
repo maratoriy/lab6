@@ -84,7 +84,7 @@ public class TCPServer implements BasicController {
             key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
             if(!object.getClass().isAssignableFrom(CommunicatingHandler.Message.class)) {
                 serverClient.pushForwardTask(ClientTask.writeTask(CommunicatingHandler.Message.COMPLETE));
-                Thread.sleep(5);
+                Thread.sleep(3);
                 write(key);
             }
         } catch (ClassNotFoundException e) {
@@ -99,7 +99,6 @@ public class TCPServer implements BasicController {
             Object object = ((ClientTask.WriteTask) client.pollTask()).getObject();
             client.writeNextObject(object);
             channel.write(client.getByteBuffer());
-            Thread.sleep(10);
             TCPServer.log("Sending object \"%s\" to \"%s\"", object.toString(), channel.getRemoteAddress());
             return true;
         }

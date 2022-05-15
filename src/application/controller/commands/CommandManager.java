@@ -1,7 +1,7 @@
 package application.controller.commands;
 
 import application.controller.commands.exceptions.NoSuchCommandException;
-import application.controller.view.StringTable;
+import application.view.StringTable;
 
 import java.util.*;
 
