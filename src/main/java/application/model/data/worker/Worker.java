@@ -3,12 +3,20 @@ package application.model.data.worker;
 import application.model.collection.adapter.CollectionItemAdapter;
 import application.model.collection.adapter.valuetree.Value;
 import application.model.collection.adapter.valuetree.ValueGroup;
+import application.model.collection.database.DBPerformable;
+import application.model.collection.database.DBRequest;
+import application.model.collection.database.Database;
 import application.model.data.exceptions.InvalidDataException;
 import application.model.data.exceptions.NullDataException;
+import application.view.ConsolePrinter;
 import com.sun.istack.internal.NotNull;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class Worker extends CollectionItemAdapter<Worker> {
@@ -171,6 +179,163 @@ public class Worker extends CollectionItemAdapter<Worker> {
 
     public void setOrganization(Organization organization) {
         this.organization = organization;
+    }
+
+    @Override
+    public List<DBRequest> deleteAll(String db_name, String user) {
+        List<DBRequest> deleteAll = new ArrayList<>();
+        deleteAll.add(DBPerformable.deleteAllDB(db_name, user));
+        deleteAll.add(DBPerformable.deleteAllDB("organizations", user));
+        return deleteAll;
+    }
+
+    @Override
+    public List<DBRequest> deleteAllCompletely(String db_name) {
+        List<DBRequest> deleteAll = new ArrayList<>();
+        deleteAll.add(DBPerformable.deleteAllCompletelyDB(db_name));
+        deleteAll.add(DBPerformable.deleteAllCompletelyDB("organizations"));
+        return deleteAll;
+    }
+
+    @Override
+    public List<DBRequest> insert(String db_name) {
+        List<DBRequest> dbRequests = new ArrayList<>();
+        String sql = "INSERT INTO "+db_name + " VALUES(nextVal('nextVal'),?,?,?,?,?,?,?,?,?,?)";
+        String fullName = (organization!=null) ? organization.getFullName() : null;
+        DBRequest insertWorker = new DBRequest(sql,
+                getUser(),
+                getName(),
+                getCoordinates().getX(),
+                getCoordinates().getY(),
+                getCreationDate().toString(),
+                getSalary(),
+                getStartDate(),
+                getPosition().toString(),
+                getStatus().toString(),
+                fullName
+        );
+        dbRequests.add(insertWorker);
+        if(organization!=null) {
+            String sqlOrganization = "INSERT INTO "+"organizations" + " VALUES(?,?,?,?,?)";
+            DBRequest insertOrganization = new DBRequest(sqlOrganization,
+                    organization.getFullName(),
+                    getUser(),
+                    organization.getAnnualTurnover(),
+                    organization.getEmployeesCount(),
+                    organization.getType());
+            dbRequests.add(insertOrganization);
+        }
+        return dbRequests;
+    }
+
+    private static String createLine(String valueName) {
+        return String.format("\"%s\" = ?, ", valueName);
+    }
+
+    private static String createEndLine(String valueName) {
+        return String.format("\"%s\" = ? ", valueName);
+    }
+
+
+    @Override
+    public List<DBRequest> update(String db_name, boolean usermode) {
+        String where = usermode ? "WHERE \"id\" = ? AND \"user\" = ?" : "WHERE \"id\" = ?";
+        List<DBRequest> dbRequests = new ArrayList<>();
+        String sql = "UPDATE "+db_name+" " +
+                "SET " +
+                createLine("id")+
+                createLine("user")+
+                createLine("name")+
+                createLine("x")+
+                createLine("y")+
+                createLine("creationDate")+
+                createLine("salary")+
+                createLine("startDate")+
+                createLine("position")+
+                createLine("status")+
+                createEndLine("organizationFullName") +
+                where;
+
+
+        String oldFullName = (organization==null) ? null : organization.getOldFullName();
+        String fullName = (organization!=null) ? organization.getFullName() : null;
+        DBRequest updateWorker = new DBRequest(sql,
+                getId(),
+                getUser(),
+                getName(),
+                coordinates.getX(),
+                coordinates.getY(),
+                getCreationDate().toString(),
+                getSalary(),
+                getStartDate(),
+                getPosition().toString(),
+                getStatus().toString(),
+                fullName,
+                getId(),
+                getUser());
+        dbRequests.add(updateWorker);
+        if (organization!=null) {
+            String sqlOrganization = "UPDATE organizations SET "+
+                createLine("fullName")+
+                createLine("user")+
+                createLine("annualTurnover")+
+                createLine("employeesCount")+
+                createEndLine("type")+
+                "WHERE \"fullName\" = ? ";
+            DBRequest dbRequest = new DBRequest(sqlOrganization,
+                    organization.getFullName(),
+                    getUser(),
+                    organization.getAnnualTurnover(),
+                    organization.getEmployeesCount(),
+                    organization.getType().toString(),
+                    oldFullName
+            );
+            dbRequests.add(dbRequest);
+        }
+        return dbRequests;
+    }
+
+    @Override
+    public List<DBRequest> delete(String db_name, boolean userMode) {
+        List<DBRequest> dbRequests = new ArrayList<>();
+        String where = userMode ? "WHERE \"id\" = ? AND \"user\" = ?" : "WHERE \"id\" = ?";
+        String deleteWorker = "DELETE FROM "+db_name+" "+where;
+        if(userMode)
+            dbRequests.add(new DBRequest(deleteWorker, getId(), getUser()));
+        else
+            dbRequests.add(new DBRequest(deleteWorker, getId()));
+        String fullName = organization.getFullName();
+        if(fullName!=null) {
+            String deleteOrganization = "DELETE FROM organizations WHERE \"fullName\" = ? ";
+            DBRequest dbRequest = new DBRequest(deleteOrganization, fullName);
+            dbRequests.add(dbRequest);
+        }
+        return dbRequests;
+    }
+
+    @Override
+    public void parse(ResultSet resultSet) throws SQLException {
+        setId(resultSet.getLong("id"));
+        setUser(resultSet.getString("user"));
+        setName(resultSet.getString("name"));
+        getCoordinates().setX(resultSet.getLong("x"));
+        getCoordinates().setY(resultSet.getInt("y"));
+        setCreationDate(LocalDateTime.parse(resultSet.getString("creationDate")));
+        setSalary(resultSet.getDouble("salary"));
+        setStartDate(resultSet.getDate("startDate").toLocalDate());
+        setPosition(Position.valueOf(resultSet.getString("position")));
+        setStatus(Status.valueOf(resultSet.getString("status")));
+
+        String fullName = resultSet.getString("organizationFullName");
+        if(fullName!=null) {
+            organization = new Organization();
+            ResultSet orgResSet = Database.getInstance().executeQuery("SELECT * FROM organizations WHERE \"fullName\" = ?", fullName);
+            if(!orgResSet.next()) return;
+            organization.setFullName(fullName);
+            organization.setAnnualTurnover(orgResSet.getInt("annualTurnover"));
+            organization.setEmployeesCount(orgResSet.getLong("employeesCount"));
+            organization.setType(OrganizationType.valueOf(orgResSet.getString("type")));
+        }
     }
 }
 

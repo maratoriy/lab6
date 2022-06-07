@@ -25,7 +25,7 @@ public class InsertAtCommand<T extends CollectionItem> extends AbstractCommand {
     @Override
     public void execute(CommandParameters params) {
         try {
-            int index = Integer.parseInt(params.getAt(0));
+            Long index = Long.parseLong(params.getAt(0));
             T newItem = collectionManager.generateNew();
             newItem.getNullGroupsNames().forEach(groupName -> {
                 ConsolePrinter.request(String.format("Generate %s (yes/no): ", groupName));

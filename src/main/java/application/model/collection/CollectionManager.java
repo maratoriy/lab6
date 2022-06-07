@@ -27,7 +27,7 @@ public interface CollectionManager<T extends CollectionItem> {
 
     void sort();
 
-    void insertAtIndex(int index, T item);
+    void insertAtIndex(Long id, T item);
 
     void updateById(Long id, T item);
 

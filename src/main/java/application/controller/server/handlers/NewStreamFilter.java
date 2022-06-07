@@ -15,8 +15,11 @@ public class NewStreamFilter extends AbstractMessageHandler {
 
     @Override
     protected void handleAction(ServerClient client, Message message) {
-        TCPServer.log("Handler {} will start at new Thread", wrapped.getClass().getSimpleName());
-        Runnable threadRun = () -> wrapped.handleObject(client, message);
+        Runnable threadRun = () -> {
+            TCPServer.log("Handler {} started at new Thread {}", wrapped.getClass().getSimpleName(), Thread.currentThread().getName());
+            wrapped.handleObject(client, message);
+            TCPServer.log("Stopped handler {} at new Thread {}", wrapped.getClass().getSimpleName(), Thread.currentThread().getName());
+        };
         Thread handleThread = new Thread(threadRun);
         handleThread.setDaemon(true);
         handleThread.start();

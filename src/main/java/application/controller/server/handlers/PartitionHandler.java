@@ -11,5 +11,6 @@ public class PartitionHandler extends AbstractMessageHandler {
     @Override
     protected void handleAction(ServerClient client, Message message) {
         client.startReceivingParts((Integer) message.get("parts"));
+        client.sendObject(new Message(Message.Type.READY));
     }
 }

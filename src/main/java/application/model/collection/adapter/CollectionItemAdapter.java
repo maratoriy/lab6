@@ -13,7 +13,7 @@ import java.util.List;
 
 abstract public class CollectionItemAdapter<T> implements CollectionItem {
     protected ValueGroup valueGroup;
-
+    private String user = "local";
 
     {
         valueGroup = new ValueGroup("collectionItem");
@@ -28,6 +28,20 @@ abstract public class CollectionItemAdapter<T> implements CollectionItem {
                 .block()
                 .setUnique()
         );
+        valueGroup.addValueNode(new Value("user",
+                this::getUser,
+                this::setUser)
+                .block());
+    }
+
+    @Override
+    public void setUser(String user) {
+        this.user = user;
+    }
+
+    @Override
+    public String getUser() {
+        return user;
     }
 
     @Override

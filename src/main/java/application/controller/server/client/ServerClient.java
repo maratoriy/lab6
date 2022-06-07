@@ -1,5 +1,6 @@
 package application.controller.server.client;
 
+import application.controller.server.ClientObserver;
 import application.controller.server.Message;
 import application.controller.server.TCPServer;
 import application.controller.server.exceptions.ServerException;
@@ -14,26 +15,37 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.SynchronousQueue;
 
 public class ServerClient {
     private final ByteBuffer byteBuffer;
+    private final SocketChannel channel;
 
-
-    private Queue<ByteBuffer> buffersToSend;
     private Queue<Message> objectsToSend;
-    private List<ByteBuffer> receivedBuffers;
+    private Queue<ByteBuffer> buffersToSend;
+
     private BlockingDeque<Object> receivedObjects;
+    private boolean receivingParts = false;
+    private int partsToReceive;
+    private int receivedParts;
+    private List<ByteBuffer> receivedBuffers;
     private final String name = "Undefined";
+
+    private final List<ClientObserver> hooks;
+
     {
         buffersToSend = new ArrayDeque<>();
         objectsToSend = new ArrayDeque<>();
         receivedBuffers = new ArrayList<>();
         receivedObjects = new LinkedBlockingDeque<>();
+        hooks = new ArrayList<>();
     }
 
-    public ServerClient(int bufferCapacity) {
+    public ServerClient(int bufferCapacity, SocketChannel channel) {
         this.byteBuffer = ByteBuffer.allocate(bufferCapacity);
+        this.channel = channel;
     }
+
 
     public void receiveObject(Object object) {
         TCPServer.log("Received object {} from {}", object.getClass().getSimpleName(),getName());
@@ -44,6 +56,10 @@ public class ServerClient {
         return name;
     }
 
+    public boolean hasObjectToSend() {
+        return !objectsToSend.isEmpty()||!buffersToSend.isEmpty();
+    }
+
     public Object pollReceivedObject() {
         try {
             return receivedObjects.takeFirst();
@@ -52,12 +68,12 @@ public class ServerClient {
         }
     }
 
-    private boolean receivingParts = false;
-    private int partsToReceive;
-    private int receivedParts;
+    public void addHook(ClientObserver observer) {
+        hooks.add(observer);
+    }
 
-    public boolean isReceivingParts() {
-        return receivingParts;
+    public SocketChannel getChannel() {
+        return channel;
     }
 
     public void startReceivingParts(int partsToReceive) {
@@ -67,7 +83,7 @@ public class ServerClient {
         receivedParts = 0;
     }
 
-    public Message stopReceivingParts() {
+    private Message stopReceivingParts() {
         TCPServer.log("Stopped receiving message by {} parts from {}", partsToReceive, getName());
         receivingParts = false;
         try {
@@ -80,10 +96,10 @@ public class ServerClient {
         return null;
     }
 
-    public Message receivePart(ByteBuffer buffer) throws ClassNotFoundException, IOException {
+    public Message receive(ByteBuffer buffer) throws ClassNotFoundException, IOException {
 //        TCPServer.log("Received ByteBuffer from {}", getName());
         if(!receivingParts) {
-            receivedObjects.add(TCPServer.deserializeBuffer(buffer));
+            return (Message) TCPServer.deserializeBuffer(buffer);
         } else {
             receivedParts++;
             receivedBuffers.add(buffer);
@@ -92,9 +108,12 @@ public class ServerClient {
         return null;
     }
 
-    public void addObjectToSend(Message object) {
+    public void sendObject(Message object) {
         objectsToSend.add(object);
+        update(ClientObserver.Type.WRITE);
     }
+
+
 
     public ByteBuffer getByteBuffer() {
         return byteBuffer;
@@ -112,7 +131,9 @@ public class ServerClient {
 
     }
 
-
+    private void update(ClientObserver.Type type) {
+        hooks.forEach(iter -> iter.observe(type, this));
+    }
 
 
     private boolean moveObjectQueue() throws IOException {

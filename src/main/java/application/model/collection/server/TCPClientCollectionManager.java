@@ -4,6 +4,7 @@ import application.controller.exceptions.CriticalErrorException;
 import application.controller.server.Message;
 import application.controller.server.TCPCommunicator;
 import application.controller.server.exceptions.ServerException;
+import application.controller.server.handlers.AuthorizationHandler;
 import application.model.collection.AbstractCollectionManager;
 import application.model.collection.CollectionItem;
 import application.model.collection.CollectionManager;
@@ -12,12 +13,16 @@ import application.view.StringTable;
 import java.io.IOException;
 import java.util.List;
 
-abstract public class TCPClientCollectionManager<T extends CollectionItem> implements CollectionManager<T> {
+abstract public class TCPClientCollectionManager<T extends CollectionItem>
+        implements CollectionManager<T>, AuthorisationManager {
     private final TCPCommunicator tcpCommunicator;
 
     public TCPClientCollectionManager(String hostName, int port) {
         this.tcpCommunicator = new TCPCommunicator(hostName, port);
     }
+
+    private String login = "login";
+    private String password = "default";
 
     private int triesToConnect = 0;
 
@@ -33,16 +38,41 @@ abstract public class TCPClientCollectionManager<T extends CollectionItem> imple
         }
     }
 
-    static private Message createCommand(String commandName) {
-        return new Message(Message.Type.COMMAND)
+    public Message createConcreteMessage(Message.Type type) {
+        return new Message(type)
+                .put("login", login)
+                .put("password", password);
+    }
+
+    @Override
+    public boolean login(String login, String password) {
+        this.login = login;
+        this.password = AuthorizationHandler.hashPassword(password, "default");
+        return (Boolean) send(createConcreteMessage(Message.Type.AUTH)
+                .put("action", "login")
+        ).get("accepted");
+    }
+
+    @Override
+    public boolean register(String login, String password) {
+        this.login = login;
+        this.password = AuthorizationHandler.hashPassword(password, "default");
+        return (Boolean) send(createConcreteMessage(Message.Type.AUTH)
+                .put("action", "register")
+        ).get("accepted");
+    }
+
+    private Message createCommand(String commandName) {
+        return createConcreteMessage(Message.Type.COMMAND)
                 .put("commandName", commandName);
     }
 
-    private Message sendCommand(Message command) {
+    private Message send(Message command) {
         tcpCommunicator.write(command);
         Message respond = tcpCommunicator.read();
-        if (respond.getType() == Message.Type.ERROR)
+        if (respond.getType() == Message.Type.ERROR) {
             throw (RuntimeException) respond.get("error");
+        }
         return respond;
     }
 
@@ -58,40 +88,42 @@ abstract public class TCPClientCollectionManager<T extends CollectionItem> imple
 
     @Override
     public T generateNew() {
-        return getElemsClass().cast(sendCommand(createCommand("generateNew")).get("item"));
+        T elem = getElemsClass().cast(send(createCommand("generateNew")).get("item"));
+        elem.setUser(login);
+        return elem;
     }
 
     @Override
     public int size() {
-        return (Integer) sendCommand(createCommand("size")).get("size");
+        return (Integer) send(createCommand("size")).get("size");
     }
 
     @Override
     public void clear() {
-        sendCommand(createCommand("clear"));
+        send(createCommand("clear"));
     }
 
     @Override
     public void reverse() {
-        sendCommand(createCommand("reverse"));
+        send(createCommand("reverse"));
     }
 
     @Override
     public void sort() {
-        sendCommand(createCommand("sort"));
+        send(createCommand("sort"));
     }
 
     @Override
-    public void insertAtIndex(int index, T item) {
-        sendCommand(createCommand("insertAtIndex")
-                .put("index", index)
+    public void insertAtIndex(Long id, T item) {
+        send(createCommand("insertAtIndex")
+                .put("index", id)
                 .put("item", item)
         );
     }
 
     @Override
     public void updateById(Long id, T item) {
-        sendCommand(createCommand("updateById")
+        send(createCommand("updateById")
                 .put("id", id)
                 .put("item", item)
         );
@@ -99,7 +131,7 @@ abstract public class TCPClientCollectionManager<T extends CollectionItem> imple
 
     @Override
     public long countByValue(String valueName, String value) {
-        return (Long) sendCommand(createCommand("countByValue")
+        return (Long) send(createCommand("countByValue")
                 .put("valueName", valueName)
                 .put("value", value)
         ).get("count");
@@ -107,7 +139,7 @@ abstract public class TCPClientCollectionManager<T extends CollectionItem> imple
 
     @Override
     public void add(T element) {
-        sendCommand(createCommand("add")
+        send(createCommand("add")
                 .put("element", element));
     }
 
@@ -115,7 +147,7 @@ abstract public class TCPClientCollectionManager<T extends CollectionItem> imple
     @Override
     public T getById(Long id) {
         return getElemsClass().cast(
-                sendCommand(
+                send(
                         createCommand("getById")
                                 .put("id", id)
                 ).get("item"));
@@ -123,7 +155,7 @@ abstract public class TCPClientCollectionManager<T extends CollectionItem> imple
 
     @Override
     public boolean removeById(Long id) {
-        return (boolean) sendCommand(createCommand("removeById").put("id", id)).get("removed");
+        return (boolean) send(createCommand("removeById").put("id", id)).get("removed");
     }
 
     @Override
@@ -133,14 +165,14 @@ abstract public class TCPClientCollectionManager<T extends CollectionItem> imple
 
     @Override
     public StringTable getCollectionInfo() {
-        return (StringTable) sendCommand(createCommand("getCollectionInfo"))
+        return (StringTable) send(createCommand("getCollectionInfo"))
                 .get("collectionInfo");
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public List<T> asFilteredList(CollectionFilter<? super T> predicate) {
-        return (List<T>) sendCommand(createCommand("asFilteredList")
+        return (List<T>) send(createCommand("asFilteredList")
                 .put("predicate", predicate))
                 .get("list");
     }
@@ -148,7 +180,7 @@ abstract public class TCPClientCollectionManager<T extends CollectionItem> imple
     @SuppressWarnings("unchecked")
     @Override
     public List<T> asList() {
-        return (List<T>) sendCommand(createCommand("asList"))
+        return (List<T>) send(createCommand("asList"))
                 .get("list");
     }
 }

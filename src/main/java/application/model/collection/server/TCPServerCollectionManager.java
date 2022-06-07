@@ -5,21 +5,23 @@ import application.controller.server.handlers.*;
 import application.model.collection.AbstractCollectionManager;
 import application.model.collection.CollectionItem;
 import application.model.collection.CollectionManager;
+import application.model.collection.database.DatabaseCollectionManager;
 import application.view.StringTable;
 
 import java.util.List;
 
 public class TCPServerCollectionManager<T extends CollectionItem> implements CollectionManager<T> {
-    private final AbstractCollectionManager<T> wrappedCollectionManager;
+    private final DatabaseCollectionManager<T> wrappedCollectionManager;
     private final TCPServer server;
     private final Thread serverThread;
 
-    public TCPServerCollectionManager(AbstractCollectionManager<T> wrappedCollectionManager, String hostName, int port) {
+    public TCPServerCollectionManager(DatabaseCollectionManager<T> wrappedCollectionManager, String hostName, int port) {
         this.wrappedCollectionManager = wrappedCollectionManager;
         this.server = new TCPServer(hostName, port);
 
         MessageHandler messageHandlerChain = new PartitionHandler()
                 .addNext(new DataFilter())
+                .addNext(new NewStreamFilter(new AuthorizationHandler()))
                 .addNext(new NewStreamFilter(new CommandHandler<>(wrappedCollectionManager)));
 
         server.setMessageHandler(messageHandlerChain);
@@ -30,17 +32,19 @@ public class TCPServerCollectionManager<T extends CollectionItem> implements Col
 
     @Override
     public void close() {
+        wrappedCollectionManager.close();
         server.close();
     }
 
     @Override
     public void init() {
+        if(!wrappedCollectionManager.isInit()) wrappedCollectionManager.init();
         serverThread.start();
     }
 
     @Override
     public boolean isInit() {
-        return serverThread.isAlive();
+        return wrappedCollectionManager.isInit()&&serverThread.isAlive();
     }
 
     @Override
@@ -64,8 +68,8 @@ public class TCPServerCollectionManager<T extends CollectionItem> implements Col
     }
 
     @Override
-    public void insertAtIndex(int index, T item) {
-        wrappedCollectionManager.insertAtIndex(index, item);
+    public void insertAtIndex(Long id, T item) {
+        wrappedCollectionManager.insertAtIndex(id, item);
     }
 
     @Override

@@ -73,16 +73,20 @@ public class TCPCommunicator {
             if (byteBuffer.limit() <= TCPServer.BUFFER_CAPACITY) {
                 debug("Writing {} to {}", msg, address);
                 dos.write(byteBuffer.array());
+                dos.flush();
             } else {
                 List<ByteBuffer> sliced = TCPServer.sliceByteBuffer(byteBuffer);
                 debug("Preparing to send {}} sliced to {} parts to {}", msg, sliced.size(), address);
                 dos.write(TCPServer.serializeToByteArray(new Message(Message.Type.PARTS).put("parts", sliced.size())));
-                Thread.sleep(5);
+                dos.flush();
+                Message message = read();
+                if(message.getType()!= Message.Type.READY) return;
                 for (ByteBuffer iter : sliced) {
                     dos.write(iter.array());
+                    dos.flush();
                 }
             }
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException  e) {
             close();
             throw new ServerException(e);
         }
@@ -90,7 +94,7 @@ public class TCPCommunicator {
 
     private ByteBuffer readBuffer() throws IOException {
         byte[] buffer = new byte[TCPServer.BUFFER_CAPACITY];
-        dis.read(buffer);
+        while(dis.read(buffer)==-1);
         return ByteBuffer.wrap(buffer);
     }
 
@@ -102,7 +106,7 @@ public class TCPCommunicator {
     public void close() {
         try {
             debug("Closing connection with {}", address);
-            socket.close();
+            if(socket!=null) socket.close();
         } catch (IOException e) {
 
         }

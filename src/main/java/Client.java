@@ -1,4 +1,5 @@
 import application.controller.ApplicationController;
+import application.controller.actions.LoginAction;
 import application.controller.commands.worker.CountByPositionCommand;
 import application.controller.commands.worker.FilterGreaterThanPositionCommand;
 import application.controller.commands.worker.SumOfSalaryCommand;
@@ -23,6 +24,9 @@ public class Client {
         controller.getCommandManager().addCommand(new CountByPositionCommand<>(tcpClientCollectionManager));
         controller.getCommandManager().addCommand(new SumOfSalaryCommand<>(tcpClientCollectionManager));
         controller.getCommandManager().addCommand(new FilterGreaterThanPositionCommand<>(tcpClientCollectionManager));
+
+        controller.getActionManager().add(tcpClientCollectionManager::init);
+        controller.getActionManager().add(new LoginAction(controller.getInputManager(), tcpClientCollectionManager));
 
         controller.run();
     }

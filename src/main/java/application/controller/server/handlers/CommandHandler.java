@@ -7,23 +7,25 @@ import application.controller.server.client.ServerClient;
 import application.controller.server.exceptions.ServerException;
 import application.model.collection.CollectionItem;
 import application.model.collection.CollectionManager;
+import application.model.collection.database.DatabaseCollectionManager;
+import application.model.collection.exceptions.CollectionException;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 public class CommandHandler<T extends CollectionItem> extends AbstractMessageHandler {
-    public final CollectionManager<T> collectionManager;
+    public final DatabaseCollectionManager<T> collectionManager;
 
-    public CommandHandler(CollectionManager<T> collectionManager) {
+    public CommandHandler(DatabaseCollectionManager<T> collectionManager) {
         super(Message.Type.COMMAND);
         this.collectionManager = collectionManager;
 
         commandProcessor = new HashMap<>();
 
         commandProcessor.put("clear", (message -> {
-            collectionManager.clear();
+            String user = (String) message.get("login");
+            collectionManager.clear(user);
             return new Message(Message.Type.SUCCESS);
         }));
         commandProcessor.put("size", (message ->
@@ -41,13 +43,13 @@ public class CommandHandler<T extends CollectionItem> extends AbstractMessageHan
         commandProcessor.put("insertAtIndex", (message -> {
             Integer index = (Integer) message.get("index");
             T item = collectionManager.getElemsClass().cast(message.get("item"));
-            collectionManager.insertAtIndex(index, item);
             return new Message(Message.Type.SUCCESS);
         }));
         commandProcessor.put("updateById", (message -> {
+            String user = (String) message.get("login");
             Long id = (Long) message.get("id");
             T item = collectionManager.getElemsClass().cast(message.get("item"));
-            collectionManager.updateById(id, item);
+            collectionManager.updateById(user, id, item);
             return new Message(Message.Type.SUCCESS);
         }));
         commandProcessor.put("countByValue", (message -> {
@@ -82,9 +84,10 @@ public class CommandHandler<T extends CollectionItem> extends AbstractMessageHan
                     .put("item", collectionManager.getById(id));
         }));
         commandProcessor.put("removeById", (message -> {
+            String user = (String) message.get("login");
             Long id = (Long) message.get("id");
             return new Message(Message.Type.SUCCESS)
-                    .put("removed", collectionManager.removeById(id));
+                    .put("removed", collectionManager.removeById(user, id));
         }));
     }
 
@@ -94,12 +97,12 @@ public class CommandHandler<T extends CollectionItem> extends AbstractMessageHan
     @Override
     protected void handleAction(ServerClient client, Message message) {
         try {
-            TCPServer.log("Received command ({})", message.toString());
             String commandName = (String) message.get("commandName");
+            String login = (String) message.get("login");
             if (!commandProcessor.containsKey(commandName)) throw new NoSuchCommandException();
-            client.addObjectToSend(commandProcessor.get(commandName).apply(message));
-        } catch (RuntimeException e) {
-            client.addObjectToSend(new Message(Message.Type.ERROR).put("error", new ServerException(e.getMessage())));
+            client.sendObject(commandProcessor.get(commandName).apply(message));
+        } catch (CollectionException e) {
+            client.sendObject(Message.error(new ServerException(e.getMessage())));
         }
     }
 }

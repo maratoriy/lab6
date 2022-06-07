@@ -2,14 +2,28 @@ package application.controller.server;
 
 import application.controller.server.client.ServerClient;
 
-import java.util.LinkedList;
-import java.util.List;
+abstract public class ClientObserver {
+    private final Type type;
 
-public class ClientObserver {
+    private ClientObserver(Type type) {
+        this.type = type;
+    }
 
+    public void observe(Type type, ServerClient client) {
+        if (this.type == type)
+            observeAction(client);
+    }
 
-    synchronized public void wantToWrite(ServerClient client) {
+    abstract protected void observeAction(ServerClient client);
 
+    public enum Type {
+        WRITE
+    }
+
+    static abstract public class WriteObserver extends ClientObserver {
+        public WriteObserver() {
+            super(Type.WRITE);
+        }
     }
 
 }

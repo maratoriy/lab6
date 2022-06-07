@@ -36,14 +36,20 @@ public class Message implements Serializable {
 
     public enum Type {
         PARTS,
+        READY,
         COMMAND,
         SUCCESS,
         ERROR,
-        DATA
+        DATA,
+        AUTH
     }
 
-    static private String shorterString(String string, int num) {
+    static public String shorterString(String string, int num) {
         return (string.length()>num) ? string.substring(0, num)+"..." : string;
+    }
+
+    static public Message error(RuntimeException e) {
+        return new Message(Type.ERROR).put("error", e);
     }
 
     @Override

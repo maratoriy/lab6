@@ -13,6 +13,10 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
 
 public class TCPServer implements BasicController {
     static public final int BUFFER_CAPACITY = 1024*4;
@@ -24,6 +28,12 @@ public class TCPServer implements BasicController {
     private final InetSocketAddress address;
     private Selector selector;
     private MessageHandler messageHandler;
+
+    private final ClientObserver.WriteObserver writeObserver;
+
+    {
+        writeObserver = new WriteObserver(Executors.newFixedThreadPool(16));
+    }
 
     public void setMessageHandler(MessageHandler messageHandler) {
         this.messageHandler = messageHandler;
@@ -58,6 +68,9 @@ public class TCPServer implements BasicController {
             selector = Selector.open();
             serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT, serverSocketChannel);
 
+            ForkJoinPool forkJoinPool = ForkJoinPool.commonPool();
+            ForkJoinTask<?> currentTask = null;
+
             state = State.RUNNING;
             while (state == State.RUNNING) {
                 selector.select();
@@ -65,37 +78,42 @@ public class TCPServer implements BasicController {
                 while (keyIterator.hasNext()) {
                     SelectionKey key = keyIterator.next();
                     keyIterator.remove();
-                    if (key.isAcceptable())
-                        accept(key);
-                    if (key.isWritable())
-                        write(key);
-                    if (key.isReadable())
-                        read(key, messageHandler);
+                    if (key.isAcceptable()) {
+                        ServerClient client = accept(key);
+                        if(currentTask==null||currentTask.isDone()) {
+                            RecursiveRead.clear();
+                            TCPServer.log("Started new RecursiveRead!");
+                            currentTask = forkJoinPool.submit(new RecursiveRead(Collections.singletonList(client), messageHandler));
+                        }
+                    }
                 }
             }
-        } catch (IOException | ClosedSelectorException | CancelledKeyException | ClassNotFoundException e) {
-            e.printStackTrace();
+        } catch (IOException | ClosedSelectorException | CancelledKeyException e) {
+            TCPServer.log(e.getMessage());
         }
 
     }
 
-    private void accept(SelectionKey key) throws IOException {
+    private ServerClient accept(SelectionKey key) throws IOException {
         ServerSocketChannel serverSocketChannel = (ServerSocketChannel) key.channel();
         SocketChannel socketChannel = serverSocketChannel.accept();
         socketChannel.configureBlocking(false);
-        SelectionKey clientKey = socketChannel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
-        ServerClient client = new ServerClient(BUFFER_CAPACITY);
-        clientKey.attach(client);
+        socketChannelQueue.add(socketChannel);
+        ServerClient client = new ServerClient(BUFFER_CAPACITY, socketChannel);
+        RecursiveRead.register(client);
+        client.addHook(writeObserver);
         log("New client connected from {}", socketChannel.getRemoteAddress());
+        return client;
     }
 
     static private void disconnect(SelectionKey key) throws IOException {
         key.cancel();
+        key.channel().close();
         String name = ((ServerClient) key.attachment()).getName();
         log("Client {} disconnected", name);
     }
 
-    static private void read(SelectionKey key, MessageHandler messageHandler) throws IOException, ClassNotFoundException {
+    static public void read(SelectionKey key, MessageHandler messageHandler) throws IOException, ClassNotFoundException {
         SocketChannel channel = (SocketChannel) key.channel();
         ByteBuffer byteBuffer = ByteBuffer.allocate(BUFFER_CAPACITY);
         int byteLen = channel.read(byteBuffer);
@@ -106,20 +124,21 @@ public class TCPServer implements BasicController {
         byteBuffer.flip();
         ServerClient serverClient = (ServerClient) key.attachment();
         Message message;
-        if (serverClient.isReceivingParts()) {
-            message = serverClient.receivePart(byteBuffer);
-        } else {
-            message = (Message) deserializeBuffer(byteBuffer);
-        }
+        message = serverClient.receive(byteBuffer);
         if(message==null) return;
+        TCPServer.log("Received object {} from {}", message, channel.getRemoteAddress());
         messageHandler.handleObject(serverClient, message);
     }
 
 
 
-    static private void write(SelectionKey key) throws IOException {
+    static public void write(SelectionKey key) throws IOException {
         ServerClient client = (ServerClient) key.attachment();
         SocketChannel channel = (SocketChannel) key.channel();
+        write(channel, client);
+    }
+
+    static public void write(SocketChannel channel, ServerClient client) throws IOException {
         if (client.prepareByteBuffer()) {
             channel.write(client.getByteBuffer());
         }
@@ -185,7 +204,7 @@ public class TCPServer implements BasicController {
         }
     }
 
-
+    private final Queue<SocketChannel> socketChannelQueue = new ArrayDeque<>();
 
     @Override
     public boolean isRunning() {
@@ -196,6 +215,10 @@ public class TCPServer implements BasicController {
     public void close() {
         try {
             selector.wakeup();
+            for (SocketChannel socketChannel:
+                 socketChannelQueue) {
+                socketChannel.close();
+            }
             serverSocketChannel.close();
             state = State.CLOSING;
             log("Disconnecting...");

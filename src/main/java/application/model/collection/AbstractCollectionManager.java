@@ -30,7 +30,7 @@ abstract public class AbstractCollectionManager<T extends CollectionItem> implem
     }
 
 
-    protected Long generateId() {
+    synchronized protected Long generateId() {
         List<Long> idList = getCollection().stream().collect(
                 ArrayList::new,
                 (list, item) -> list.add(item.getId()),

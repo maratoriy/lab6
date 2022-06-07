@@ -55,7 +55,7 @@ public class ApplicationController<T extends CollectionItem> implements SavableC
         commandManager.addCommand(new RemoveByIdCommand(collectionManager));
         commandManager.addCommand(new AddCommand<>(collectionManager, actionManager, inputManager));
         commandManager.addCommand(new UpdateCommand<>(collectionManager, actionManager, inputManager));
-        commandManager.addCommand(new InsertAtCommand<>(collectionManager, actionManager, inputManager));
+//        commandManager.addCommand(new InsertAtCommand<>(collectionManager, actionManager, inputManager));
         commandManager.addCommand(new ExecuteScriptCommand(inputManager));
 //        commandManager.addCommand(new SaveCommand(this, collectionManager));
 
@@ -118,6 +118,10 @@ public class ApplicationController<T extends CollectionItem> implements SavableC
 
     public CommandManager getCommandManager() {
         return commandManager;
+    }
+
+    public InputManager getInputManager() {
+        return inputManager;
     }
 
     public void setSavePath(String savePath) {
