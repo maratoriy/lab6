@@ -4,6 +4,7 @@ import application.model.data.exceptions.NullDataException;
 import com.sun.istack.internal.NotNull;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class Coordinates implements Serializable {
     private Long x; //Поле не может быть null
@@ -33,5 +34,18 @@ public class Coordinates implements Serializable {
 
     public int getY() {
         return y;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Coordinates that = (Coordinates) o;
+        return y == that.y && Objects.equals(x, that.x);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(x, y);
     }
 }

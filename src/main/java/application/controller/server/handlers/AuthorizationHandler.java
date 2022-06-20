@@ -1,14 +1,19 @@
 package application.controller.server.handlers;
 
-import application.controller.server.Message;
+import application.controller.server.AuthorisationManager;
 import application.controller.server.client.ServerClient;
-import application.model.collection.server.AuthorisationManager;
+import application.controller.server.exceptions.AuthorizationException;
+import application.controller.server.exceptions.UsedLoginException;
+import application.controller.server.exceptions.WrongLoginException;
+import application.controller.server.exceptions.WrongPasswordException;
+import application.controller.server.messages.ClientMessage;
+import application.controller.server.messages.Message;
 import application.model.collection.database.Database;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class AuthorizationHandler extends AbstractMessageHandler {
+public class AuthorizationHandler extends PipeTypeAction {
 
     public AuthorizationHandler() {
         super(Message.Type.AUTH);
@@ -22,46 +27,45 @@ public class AuthorizationHandler extends AbstractMessageHandler {
         return Message.shorterString(AuthorisationManager.encryptMD5(password, salt), 511);
     }
 
-    static public boolean login(String login, String password)  {
+    synchronized static public void login(String login, String password) {
         try {
             Database database = Database.getInstance();
             ResultSet resultSet = selectUsers(database, login);
-            resultSet.next();
+            if (!resultSet.next()) throw new WrongLoginException();
             String dataBasePassword = resultSet.getString("password");
             String salt = resultSet.getString("salt");
             String hashedPassword = hashPassword(password, salt);
-            return (hashedPassword.equals(dataBasePassword));
+            if (!hashedPassword.equals(dataBasePassword)) throw new WrongPasswordException();
         } catch (SQLException e) {
-            return false;
+            throw new AuthorizationException("SQL exception happened while authorization!");
         }
     }
 
-    static public boolean register(String login, String password) {
+    synchronized static public void register(String login, String password) {
         try {
             Database database = Database.getInstance();
             ResultSet resultSet = selectUsers(database, login);
-            if(resultSet.next()) return false;
-            String salt =  String.valueOf((int) ((Math.random() * 999)));
+            if (resultSet.next()) throw new UsedLoginException();
+            String salt = String.valueOf((int) ((Math.random() * 999)));
             String hashedPassword = hashPassword(password, salt);
             int request = database.executeUpdate("INSERT INTO users VALUES (?, ?, ?)", login, hashedPassword, salt);
-            return true;
         } catch (SQLException e) {
-            return false;
+            throw new AuthorizationException("SQL exception happened while authorization!");
         }
     }
 
     @Override
-    protected void handleAction(ServerClient client, Message message) {
+    protected void handleAction(ServerClient client, ClientMessage message) {
         try {
             String action = (String) message.get("action");
-            String login = (String) message.get("login");
-            String password = (String) message.get("password");
-            boolean result = false;
-            if (action.equals("login")) result = login(login, password);
-            if (action.equals("register")) result = register(login, password);
-            client.sendObject(new Message(Message.Type.SUCCESS).put("accepted", result));
+            String login = message.login;
+            String password = message.password;
+            if (action.equals("login")) login(login, password);
+            if (action.equals("register")) register(login, password);
+            client.setName(login);
+            client.sendObject(new Message(Message.Type.SUCCESS).put("accepted", true));
         } catch (RuntimeException e) {
-            client.sendObject(new Message(Message.Type.SUCCESS).put("accepted", false));
+            client.sendObject(Message.error(e).put("accepted", false));
         }
     }
 }

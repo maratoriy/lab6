@@ -1,31 +1,33 @@
 package application.model.collection.server;
 
+import application.controller.server.ExecutorWrite;
+import application.controller.server.ForkJoinRead;
 import application.controller.server.TCPServer;
 import application.controller.server.handlers.*;
-import application.model.collection.AbstractCollectionManager;
-import application.model.collection.CollectionItem;
 import application.model.collection.CollectionManager;
-import application.model.collection.database.DatabaseCollectionManager;
-import application.view.StringTable;
+import application.view.datamodels.StringTable;
 
 import java.util.List;
 
-public class TCPServerCollectionManager<T extends CollectionItem> implements CollectionManager<T> {
-    private final DatabaseCollectionManager<T> wrappedCollectionManager;
+public class TCPServerCollectionManager<T extends UserItem> implements CollectionManager<T> {
+    private final CollectionManager<T> wrappedCollectionManager;
     private final TCPServer server;
     private final Thread serverThread;
 
-    public TCPServerCollectionManager(DatabaseCollectionManager<T> wrappedCollectionManager, String hostName, int port) {
+    public TCPServerCollectionManager(UserCollectionManager<T> wrappedCollectionManager, String hostName, int port) {
         this.wrappedCollectionManager = wrappedCollectionManager;
-        this.server = new TCPServer(hostName, port);
 
         MessageHandler messageHandlerChain = new PartitionHandler()
+                .addNext(new ClearMessageHandler())
+                .addNext(new AbstractMessageHandler.NewStreamPipe())
                 .addNext(new DataFilter())
-                .addNext(new NewStreamFilter(new AuthorizationHandler()))
-                .addNext(new NewStreamFilter(new CommandHandler<>(wrappedCollectionManager)));
+                .addNext(new AuthorizationHandler())
+                .addNext(new UserCommandHandler<>(wrappedCollectionManager));
 
-        server.setMessageHandler(messageHandlerChain);
+        ForkJoinRead forkJoinRead = new ForkJoinRead(messageHandlerChain, 4);
+        ExecutorWrite executorWrite = new ExecutorWrite(4);
 
+        this.server = new TCPServer(port, forkJoinRead::processRead, executorWrite::subscribeClient);
         this.serverThread = new Thread(server::run);
         serverThread.setDaemon(true);
     }
@@ -38,13 +40,13 @@ public class TCPServerCollectionManager<T extends CollectionItem> implements Col
 
     @Override
     public void init() {
-        if(!wrappedCollectionManager.isInit()) wrappedCollectionManager.init();
+        if (!wrappedCollectionManager.isInit()) wrappedCollectionManager.init();
         serverThread.start();
     }
 
     @Override
     public boolean isInit() {
-        return wrappedCollectionManager.isInit()&&serverThread.isAlive();
+        return wrappedCollectionManager.isInit() && serverThread.isAlive();
     }
 
     @Override
@@ -57,6 +59,7 @@ public class TCPServerCollectionManager<T extends CollectionItem> implements Col
         wrappedCollectionManager.clear();
     }
 
+
     @Override
     public void reverse() {
         wrappedCollectionManager.reverse();
@@ -68,8 +71,8 @@ public class TCPServerCollectionManager<T extends CollectionItem> implements Col
     }
 
     @Override
-    public void insertAtIndex(Long id, T item) {
-        wrappedCollectionManager.insertAtIndex(id, item);
+    public void insertAtIndex(Integer index, T item) {
+        wrappedCollectionManager.insertAtIndex(index, item);
     }
 
     @Override
@@ -94,8 +97,10 @@ public class TCPServerCollectionManager<T extends CollectionItem> implements Col
 
     @Override
     public T generateNew() {
-        return wrappedCollectionManager.generateNew();
+        T item = wrappedCollectionManager.generateNew();
+        return item;
     }
+
 
     @Override
     public T getById(Long id) {

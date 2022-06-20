@@ -4,13 +4,13 @@ import application.controller.commands.AbstractCommand;
 import application.controller.commands.CommandParameters;
 import application.controller.input.InputManager;
 import application.controller.input.ScriptInputStrategy;
-import application.view.ConsolePrinter;
+import application.view.console.ConsolePrinter;
 
 public class ExecuteScriptCommand extends AbstractCommand {
     private final InputManager inputManager;
 
     public ExecuteScriptCommand(InputManager inputManager) {
-        super("execute_script", "execute script by its path");
+        super("execute_script");
         this.inputManager = inputManager;
     }
 

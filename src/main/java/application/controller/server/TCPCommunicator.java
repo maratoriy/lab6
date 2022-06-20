@@ -1,20 +1,23 @@
 package application.controller.server;
 
 import application.controller.server.exceptions.ServerException;
+import application.controller.server.messages.ClientMessage;
+import application.controller.server.messages.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
 public class TCPCommunicator {
     private static final Logger logger = LoggerFactory.getLogger(
-            TCPServer.class);
+            TCPCommunicator.class);
 
     synchronized static public void debug(String msg) {
         logger.debug(msg);
@@ -62,12 +65,12 @@ public class TCPCommunicator {
                 return message;
             }
         } catch (IOException | ClassNotFoundException e) {
-            close();
+            write(new ClientMessage(Message.Type.CLEAR));
             throw new ServerException(e);
         }
     }
 
-    public void write(Message msg) {
+    public void write(ClientMessage msg) {
         try {
             ByteBuffer byteBuffer = TCPServer.serializeToBuffer(msg);
             if (byteBuffer.limit() <= TCPServer.BUFFER_CAPACITY) {
@@ -77,24 +80,22 @@ public class TCPCommunicator {
             } else {
                 List<ByteBuffer> sliced = TCPServer.sliceByteBuffer(byteBuffer);
                 debug("Preparing to send {}} sliced to {} parts to {}", msg, sliced.size(), address);
-                dos.write(TCPServer.serializeToByteArray(new Message(Message.Type.PARTS).put("parts", sliced.size())));
-                dos.flush();
-                Message message = read();
-                if(message.getType()!= Message.Type.READY) return;
+                dos.write(TCPServer.serializeToByteArray(new ClientMessage(Message.Type.PARTS, msg.login, msg.password).put("parts", sliced.size())));
                 for (ByteBuffer iter : sliced) {
+                    Message partReady = read();
+                    if (partReady.getType() != Message.Type.READY) return;
                     dos.write(iter.array());
                     dos.flush();
                 }
             }
-        } catch (IOException  e) {
-            close();
+        } catch (IOException e) {
             throw new ServerException(e);
         }
     }
 
     private ByteBuffer readBuffer() throws IOException {
         byte[] buffer = new byte[TCPServer.BUFFER_CAPACITY];
-        while(dis.read(buffer)==-1);
+        while (dis.read(buffer) == -1) ;
         return ByteBuffer.wrap(buffer);
     }
 
@@ -105,8 +106,10 @@ public class TCPCommunicator {
 
     public void close() {
         try {
-            debug("Closing connection with {}", address);
-            if(socket!=null) socket.close();
+            if (socket!=null&&!socket.isClosed()) {
+                socket.close();
+                debug("Closing connection with {}", address);
+            }
         } catch (IOException e) {
 
         }

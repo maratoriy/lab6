@@ -1,6 +1,5 @@
 package application.model.collection;
 
-import application.model.collection.exceptions.CollectionException;
 import application.model.collection.exceptions.InvalidIndexException;
 import application.model.collection.exceptions.NoSuchElemException;
 
@@ -10,6 +9,7 @@ import java.util.*;
 abstract public class StackCollectionManager<T extends CollectionItem> extends AbstractCollectionManager<T> {
 
     private final Stack<T> stack;
+
     {
         stack = new Stack<>();
 
@@ -46,9 +46,9 @@ abstract public class StackCollectionManager<T extends CollectionItem> extends A
     }
 
     @Override
-    public void insertAtIndex(Long id, T item) {
-        if(stack.stream().anyMatch(iter -> iter.getId().equals(id))) throw new CollectionException("Can't insert because position is captured");
-        item.setId(id);
+    public void insertAtIndex(Integer index, T item) {
+        if (index < 0 || index >= size()) throw new InvalidIndexException();
+        stack.insertElementAt(item, index);
         stack.add(item);
     }
 

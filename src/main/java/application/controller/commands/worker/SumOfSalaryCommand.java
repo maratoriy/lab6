@@ -1,11 +1,11 @@
 package application.controller.commands.worker;
 
-import application.view.ConsolePrinter;
-import application.model.collection.CollectionManager;
-import application.model.data.worker.Worker;
 import application.controller.commands.AbstractCommand;
 import application.controller.commands.CommandParameters;
 import application.controller.commands.exceptions.CommandException;
+import application.model.collection.CollectionManager;
+import application.model.data.worker.Worker;
+import application.view.console.ConsolePrinter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +14,7 @@ public class SumOfSalaryCommand<T extends Worker> extends AbstractCommand {
     private final CollectionManager<T> collectionManager;
 
     public SumOfSalaryCommand(CollectionManager<T> collectionManager) {
-        super("sum_of_salary", "display sum of salary");
+        super("sum_of_salary");
         this.collectionManager = collectionManager;
     }
 

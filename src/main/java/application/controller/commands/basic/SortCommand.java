@@ -1,15 +1,15 @@
 package application.controller.commands.basic;
 
-import application.model.collection.CollectionManager;
 import application.controller.commands.AbstractCommand;
 import application.controller.commands.CommandParameters;
-import application.view.ConsolePrinter;
+import application.model.collection.CollectionManager;
+import application.view.console.ConsolePrinter;
 
 public class SortCommand extends AbstractCommand {
     private final CollectionManager<?> collectionManager;
 
     public SortCommand(CollectionManager<?> collectionManager) {
-        super("sort", "sort the collection");
+        super("sort");
         this.collectionManager = collectionManager;
     }
 

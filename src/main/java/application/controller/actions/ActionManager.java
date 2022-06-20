@@ -1,8 +1,6 @@
 package application.controller.actions;
 
-import java.util.ArrayDeque;
 import java.util.LinkedList;
-import java.util.Queue;
 
 public class ActionManager {
     private final LinkedList<Action> actionQueue;

@@ -8,7 +8,7 @@ public class ExitCommand extends AbstractCommand {
     private final BasicController controller;
 
     public ExitCommand(BasicController controller) {
-        super("exit", "exit without saving");
+        super("exit");
         this.controller = controller;
     }
 

@@ -3,7 +3,7 @@ package application.model.collection;
 import application.model.collection.exceptions.EmptyCollectionException;
 import application.model.collection.exceptions.NoSuchElemException;
 import application.model.parse.DomParseable;
-import application.view.StringTable;
+import application.view.datamodels.StringTable;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -20,6 +20,14 @@ abstract public class AbstractCollectionManager<T extends CollectionItem> implem
 
     {
         initializationTime = LocalDateTime.now();
+    }
+
+    public void setInitializationTime(LocalDateTime initializationTime) {
+        this.initializationTime = initializationTime;
+    }
+
+    public LocalDateTime getInitializationTime() {
+        return initializationTime;
     }
 
     abstract protected Collection<T> getCollection();

@@ -1,14 +1,14 @@
 package application.controller.commands.basic;
 
-import application.model.collection.CollectionItem;
-import application.model.collection.CollectionManager;
-import application.model.data.exceptions.UniqueFieldException;
 import application.controller.actions.ActionManager;
 import application.controller.commands.AbstractCommand;
 import application.controller.commands.CommandParameters;
 import application.controller.commands.exceptions.InvalidCommandParamException;
 import application.controller.input.InputManager;
-import application.view.ConsolePrinter;
+import application.model.collection.CollectionItem;
+import application.model.collection.CollectionManager;
+import application.model.data.exceptions.UniqueFieldException;
+import application.view.console.ConsolePrinter;
 
 public class InsertAtCommand<T extends CollectionItem> extends AbstractCommand {
     private final CollectionManager<T> collectionManager;
@@ -16,7 +16,7 @@ public class InsertAtCommand<T extends CollectionItem> extends AbstractCommand {
     private final InputManager inputManager;
 
     public InsertAtCommand(CollectionManager<T> collectionManager, ActionManager actionManager, InputManager inputManager) {
-        super("insert_at", "insert new item at typed index");
+        super("insert_at");
         this.collectionManager = collectionManager;
         this.actionManager = actionManager;
         this.inputManager = inputManager;
@@ -25,7 +25,7 @@ public class InsertAtCommand<T extends CollectionItem> extends AbstractCommand {
     @Override
     public void execute(CommandParameters params) {
         try {
-            Long index = Long.parseLong(params.getAt(0));
+            Integer index = Integer.parseInt(params.getAt(0));
             T newItem = collectionManager.generateNew();
             newItem.getNullGroupsNames().forEach(groupName -> {
                 ConsolePrinter.request(String.format("Generate %s (yes/no): ", groupName));

@@ -1,15 +1,15 @@
 package application.controller.commands.basic;
 
-import application.model.collection.CollectionManager;
 import application.controller.commands.AbstractCommand;
 import application.controller.commands.CommandParameters;
-import application.view.ConsolePrinter;
+import application.model.collection.CollectionManager;
+import application.view.console.ConsolePrinter;
 
 public class ReorderCommand extends AbstractCommand {
     private final CollectionManager<?> collectionManager;
 
     public ReorderCommand(CollectionManager<?> collectionManager) {
-        super("reorder", "reorder the collection");
+        super("reorder");
         this.collectionManager = collectionManager;
     }
 

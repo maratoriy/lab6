@@ -1,16 +1,13 @@
 package application.model.collection;
 
-import application.model.collection.database.DBPerformable;
 import application.model.parse.DomParseable;
 
 import java.io.Serializable;
 import java.util.List;
 
-public interface CollectionItem extends Comparable<CollectionItem>, DomParseable, Serializable, DBPerformable {
+public interface CollectionItem extends Comparable<CollectionItem>, DomParseable, Serializable {
     Long getId();
 
-    String getUser();
-    void setUser(String user);
 
     void setId(Long id);
 
@@ -29,6 +26,7 @@ public interface CollectionItem extends Comparable<CollectionItem>, DomParseable
 
     List<String> getUniqueFields();
 
+    void setupValueTree();
 
 
     @Override

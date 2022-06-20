@@ -1,16 +1,16 @@
 package application.controller.server.handlers;
 
-import application.controller.server.Message;
 import application.controller.server.client.ServerClient;
+import application.controller.server.messages.ClientMessage;
+import application.controller.server.messages.Message;
 
-public class PartitionHandler extends AbstractMessageHandler {
+public class PartitionHandler extends PipeTypeAction {
     public PartitionHandler() {
         super(Message.Type.PARTS);
     }
 
     @Override
-    protected void handleAction(ServerClient client, Message message) {
+    protected void handleAction(ServerClient client, ClientMessage message) {
         client.startReceivingParts((Integer) message.get("parts"));
-        client.sendObject(new Message(Message.Type.READY));
     }
 }

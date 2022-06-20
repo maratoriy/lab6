@@ -1,12 +1,10 @@
 package application.controller.commands.basic;
 
-import application.controller.BasicController;
 import application.controller.SavableController;
 import application.controller.commands.AbstractCommand;
 import application.controller.commands.CommandParameters;
 import application.controller.commands.exceptions.OpenFileException;
 import application.model.collection.AbstractCollectionManager;
-import application.model.collection.CollectionManager;
 import org.w3c.dom.Document;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -24,7 +22,7 @@ public class SaveCommand extends AbstractCommand {
     private final SavableController controller;
 
     public SaveCommand(SavableController controller, AbstractCollectionManager<?> collectionManager) {
-        super("save", "save the collection");
+        super("save");
         this.collectionManager = collectionManager;
         this.controller = controller;
     }

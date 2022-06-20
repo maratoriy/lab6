@@ -1,12 +1,15 @@
 package application.controller.commands;
 
-abstract public class AbstractCommand implements Command {
-    private final String name;
-    private final String description;
+import application.view.gui.localization.BundleManager;
 
-    public AbstractCommand(String name, String description) {
-        this.name = name;
-        this.description = description;
+abstract public class AbstractCommand implements Command {
+    private final BundleManager bundleManager = BundleManager.getBundle("gui");
+
+    private final String name;
+
+
+    public AbstractCommand(String commandName) {
+        this.name = commandName;
     }
 
     @Override
@@ -16,7 +19,7 @@ abstract public class AbstractCommand implements Command {
 
     @Override
     public String getDescription() {
-        return description;
+        return bundleManager.getString(name + "Description");
     }
 
 }

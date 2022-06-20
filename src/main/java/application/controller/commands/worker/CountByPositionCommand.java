@@ -1,20 +1,20 @@
 package application.controller.commands.worker;
 
-import application.model.collection.CollectionManager;
-import application.model.data.worker.Position;
-import application.model.data.worker.Worker;
 import application.controller.commands.AbstractCommand;
 import application.controller.commands.CommandParameters;
 import application.controller.commands.exceptions.CommandException;
 import application.controller.commands.exceptions.InvalidCommandParamException;
-import application.view.ConsolePrinter;
+import application.model.collection.CollectionManager;
+import application.model.data.worker.Position;
+import application.model.data.worker.Worker;
+import application.view.console.ConsolePrinter;
 
 
 public class CountByPositionCommand<T extends Worker> extends AbstractCommand {
     private final CollectionManager<T> collectionManager;
 
     public CountByPositionCommand(CollectionManager<T> collectionManager) {
-        super("count_by_position", "count element by typed position");
+        super("count_by_position");
         this.collectionManager = collectionManager;
     }
 

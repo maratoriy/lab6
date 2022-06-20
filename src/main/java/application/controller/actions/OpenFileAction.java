@@ -1,13 +1,11 @@
 package application.controller.actions;
 
-import application.controller.BasicController;
 import application.controller.SavableController;
 import application.controller.commands.exceptions.OpenFileException;
 import application.model.collection.AbstractCollectionManager;
 import application.model.collection.exceptions.CollectionException;
 import application.model.data.exceptions.InvalidDataException;
-import application.view.ConsolePrinter;
-import jdk.internal.org.xml.sax.SAXException;
+import application.view.console.ConsolePrinter;
 import org.w3c.dom.Document;
 
 import javax.xml.parsers.DocumentBuilder;

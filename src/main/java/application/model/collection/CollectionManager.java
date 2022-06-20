@@ -1,6 +1,6 @@
 package application.model.collection;
 
-import application.view.StringTable;
+import application.view.datamodels.StringTable;
 
 import java.io.Serializable;
 import java.util.List;
@@ -20,14 +20,13 @@ public interface CollectionManager<T extends CollectionItem> {
 
     int size();
 
-
     void clear();
 
     void reverse();
 
     void sort();
 
-    void insertAtIndex(Long id, T item);
+    void insertAtIndex(Integer index, T item);
 
     void updateById(Long id, T item);
 
@@ -44,9 +43,11 @@ public interface CollectionManager<T extends CollectionItem> {
     boolean removeById(Long id);
 
     StringTable getCollectionTable();
+
     StringTable getCollectionInfo();
 
     List<T> asFilteredList(CollectionFilter<? super T> predicate);
+
     List<T> asList();
 
 

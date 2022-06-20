@@ -1,23 +1,23 @@
 package application.controller.commands.worker;
 
+import application.controller.commands.AbstractCommand;
+import application.controller.commands.CommandParameters;
+import application.controller.commands.exceptions.CommandException;
 import application.controller.commands.exceptions.InvalidCommandParamException;
-import application.view.ConsolePrinter;
-import application.view.ConsoleTable;
-import application.view.StringTable;
 import application.model.collection.AbstractCollectionManager;
 import application.model.collection.CollectionManager;
 import application.model.data.worker.Position;
 import application.model.data.worker.Worker;
-import application.controller.commands.AbstractCommand;
-import application.controller.commands.CommandParameters;
-import application.controller.commands.exceptions.CommandException;
+import application.view.console.ConsolePrinter;
+import application.view.console.ConsoleTable;
+import application.view.datamodels.StringTable;
 
 
 public class FilterGreaterThanPositionCommand<T extends Worker> extends AbstractCommand {
     private final CollectionManager<T> collectionManager;
 
     public FilterGreaterThanPositionCommand(CollectionManager<T> collectionManager) {
-        super("filter_greater_than_position", "display elements with position greater than typed");
+        super("filter_greater_than_position");
         this.collectionManager = collectionManager;
     }
 

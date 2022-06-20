@@ -3,12 +3,12 @@ package application.model.data.worker;
 import application.model.collection.adapter.CollectionItemAdapter;
 import application.model.collection.adapter.valuetree.Value;
 import application.model.collection.adapter.valuetree.ValueGroup;
-import application.model.collection.database.DBPerformable;
+import application.model.collection.database.DBCollectionItem;
 import application.model.collection.database.DBRequest;
 import application.model.collection.database.Database;
+import application.model.data.exceptions.EmptyFieldException;
 import application.model.data.exceptions.InvalidDataException;
 import application.model.data.exceptions.NullDataException;
-import application.view.ConsolePrinter;
 import com.sun.istack.internal.NotNull;
 
 import java.sql.ResultSet;
@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 
 public class Worker extends CollectionItemAdapter<Worker> {
@@ -35,8 +36,17 @@ public class Worker extends CollectionItemAdapter<Worker> {
         creationDate = LocalDateTime.now();
     }
 
+
     public Worker(Long id) {
         super(id);
+        coordinates = new Coordinates();
+        setupValueTree();
+    }
+
+    @Override
+    public void setupValueTree() {
+        super.setupValueTree();
+
 
         valueGroup.setName("Worker");
 
@@ -46,7 +56,6 @@ public class Worker extends CollectionItemAdapter<Worker> {
                 this::setName));
 
         //coordinates
-        coordinates = new Coordinates();
         ValueGroup coordinatesValueGroup = new ValueGroup("coordinates");
         coordinatesValueGroup.addValueNode(new Value("x",
                 () -> this.getCoordinates().getX().toString(),
@@ -99,9 +108,7 @@ public class Worker extends CollectionItemAdapter<Worker> {
                 () -> getOrganization().getType().toString(),
                 (str) -> getOrganization().setType(OrganizationType.valueOf(str))));
         valueGroup.addValueNode(organizationValueGroup);
-
     }
-
 
     @Override
     public Long getId() {
@@ -119,7 +126,7 @@ public class Worker extends CollectionItemAdapter<Worker> {
 
     public void setName(@NotNull String name) {
         if (name == null) throw new NullDataException();
-        if (name.trim().equals("")) throw new InvalidDataException("Field cannot be empty");
+        if (name.trim().equals("")) throw new EmptyFieldException();
         this.name = name;
     }
 
@@ -183,25 +190,23 @@ public class Worker extends CollectionItemAdapter<Worker> {
 
     @Override
     public List<DBRequest> deleteAll(String db_name, String user) {
-        List<DBRequest> deleteAll = new ArrayList<>();
-        deleteAll.add(DBPerformable.deleteAllDB(db_name, user));
-        deleteAll.add(DBPerformable.deleteAllDB("organizations", user));
+        List<DBRequest> deleteAll = super.deleteAll(db_name, user);
+        deleteAll.add(DBCollectionItem.deleteAllByUser("organizations", user));
         return deleteAll;
     }
 
     @Override
     public List<DBRequest> deleteAllCompletely(String db_name) {
-        List<DBRequest> deleteAll = new ArrayList<>();
-        deleteAll.add(DBPerformable.deleteAllCompletelyDB(db_name));
-        deleteAll.add(DBPerformable.deleteAllCompletelyDB("organizations"));
+        List<DBRequest> deleteAll = super.deleteAllCompletely(db_name);
+        deleteAll.add(DBCollectionItem.deleteAll("organizations"));
         return deleteAll;
     }
 
     @Override
     public List<DBRequest> insert(String db_name) {
         List<DBRequest> dbRequests = new ArrayList<>();
-        String sql = "INSERT INTO "+db_name + " VALUES(nextVal('nextVal'),?,?,?,?,?,?,?,?,?,?)";
-        String fullName = (organization!=null) ? organization.getFullName() : null;
+        String sql = "INSERT INTO " + db_name + " VALUES(nextVal('nextVal'),?,?,?,?,?,?,?,?,?,?)";
+        String fullName = (organization != null) ? organization.getFullName() : null;
         DBRequest insertWorker = new DBRequest(sql,
                 getUser(),
                 getName(),
@@ -215,8 +220,8 @@ public class Worker extends CollectionItemAdapter<Worker> {
                 fullName
         );
         dbRequests.add(insertWorker);
-        if(organization!=null) {
-            String sqlOrganization = "INSERT INTO "+"organizations" + " VALUES(?,?,?,?,?)";
+        if (organization != null) {
+            String sqlOrganization = "INSERT INTO " + "organizations" + " VALUES(?,?,?,?,?)";
             DBRequest insertOrganization = new DBRequest(sqlOrganization,
                     organization.getFullName(),
                     getUser(),
@@ -225,6 +230,7 @@ public class Worker extends CollectionItemAdapter<Worker> {
                     organization.getType());
             dbRequests.add(insertOrganization);
         }
+
         return dbRequests;
     }
 
@@ -238,27 +244,26 @@ public class Worker extends CollectionItemAdapter<Worker> {
 
 
     @Override
-    public List<DBRequest> update(String db_name, boolean usermode) {
-        String where = usermode ? "WHERE \"id\" = ? AND \"user\" = ?" : "WHERE \"id\" = ?";
+    public List<DBRequest> update(String db_name) {
+        String where = "WHERE \"id\" = ?";
         List<DBRequest> dbRequests = new ArrayList<>();
-        String sql = "UPDATE "+db_name+" " +
+        String sql = "UPDATE " + db_name + " " +
                 "SET " +
-                createLine("id")+
-                createLine("user")+
-                createLine("name")+
-                createLine("x")+
-                createLine("y")+
-                createLine("creationDate")+
-                createLine("salary")+
-                createLine("startDate")+
-                createLine("position")+
-                createLine("status")+
+                createLine("id") +
+                createLine("user") +
+                createLine("name") +
+                createLine("x") +
+                createLine("y") +
+                createLine("creationDate") +
+                createLine("salary") +
+                createLine("startDate") +
+                createLine("position") +
+                createLine("status") +
                 createEndLine("organizationFullName") +
                 where;
 
-
-        String oldFullName = (organization==null) ? null : organization.getOldFullName();
-        String fullName = (organization!=null) ? organization.getFullName() : null;
+        String oldFullName = (organization == null) ? null : organization.getOldFullName();
+        String fullName = (organization != null) ? organization.getFullName() : null;
         DBRequest updateWorker = new DBRequest(sql,
                 getId(),
                 getUser(),
@@ -271,17 +276,16 @@ public class Worker extends CollectionItemAdapter<Worker> {
                 getPosition().toString(),
                 getStatus().toString(),
                 fullName,
-                getId(),
-                getUser());
+                getId());
         dbRequests.add(updateWorker);
-        if (organization!=null) {
-            String sqlOrganization = "UPDATE organizations SET "+
-                createLine("fullName")+
-                createLine("user")+
-                createLine("annualTurnover")+
-                createLine("employeesCount")+
-                createEndLine("type")+
-                "WHERE \"fullName\" = ? ";
+        if (organization != null) {
+            String sqlOrganization = "UPDATE organizations SET " +
+                    createLine("fullName") +
+                    createLine("user") +
+                    createLine("annualTurnover") +
+                    createLine("employeesCount") +
+                    createEndLine("type") +
+                    "WHERE \"fullName\" = ? ";
             DBRequest dbRequest = new DBRequest(sqlOrganization,
                     organization.getFullName(),
                     getUser(),
@@ -296,16 +300,10 @@ public class Worker extends CollectionItemAdapter<Worker> {
     }
 
     @Override
-    public List<DBRequest> delete(String db_name, boolean userMode) {
-        List<DBRequest> dbRequests = new ArrayList<>();
-        String where = userMode ? "WHERE \"id\" = ? AND \"user\" = ?" : "WHERE \"id\" = ?";
-        String deleteWorker = "DELETE FROM "+db_name+" "+where;
-        if(userMode)
-            dbRequests.add(new DBRequest(deleteWorker, getId(), getUser()));
-        else
-            dbRequests.add(new DBRequest(deleteWorker, getId()));
-        String fullName = organization.getFullName();
-        if(fullName!=null) {
+    public List<DBRequest> delete(String db_name) {
+        List<DBRequest> dbRequests = super.delete(db_name);
+        if (organization != null) {
+            String fullName = organization.getFullName();
             String deleteOrganization = "DELETE FROM organizations WHERE \"fullName\" = ? ";
             DBRequest dbRequest = new DBRequest(deleteOrganization, fullName);
             dbRequests.add(dbRequest);
@@ -327,16 +325,25 @@ public class Worker extends CollectionItemAdapter<Worker> {
         setStatus(Status.valueOf(resultSet.getString("status")));
 
         String fullName = resultSet.getString("organizationFullName");
-        if(fullName!=null) {
+        if (fullName != null) {
             organization = new Organization();
             ResultSet orgResSet = Database.getInstance().executeQuery("SELECT * FROM organizations WHERE \"fullName\" = ?", fullName);
-            if(!orgResSet.next()) return;
+            if (!orgResSet.next()) return;
             organization.setFullName(fullName);
             organization.setAnnualTurnover(orgResSet.getInt("annualTurnover"));
             organization.setEmployeesCount(orgResSet.getLong("employeesCount"));
             organization.setType(OrganizationType.valueOf(orgResSet.getString("type")));
         }
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Worker worker = (Worker) o;
+        return id == worker.id && name.equals(worker.name) && coordinates.equals(worker.coordinates) && creationDate.equals(worker.creationDate) && salary.equals(worker.salary) && startDate.equals(worker.startDate) && position == worker.position && status == worker.status;// && Objects.equals(organization, worker.organization);
+    }
+
 }
 
 

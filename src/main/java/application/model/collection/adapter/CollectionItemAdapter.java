@@ -1,9 +1,10 @@
 package application.model.collection.adapter;
 
-import application.model.collection.CollectionItem;
 import application.model.collection.adapter.valuetree.Value;
 import application.model.collection.adapter.valuetree.ValueGroup;
 import application.model.collection.adapter.valuetree.ValueNode;
+import application.model.collection.database.DBCollectionItem;
+import application.model.collection.database.DBRequest;
 import application.model.data.exceptions.NoSuchFieldException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -11,17 +12,16 @@ import org.w3c.dom.Element;
 import java.util.ArrayList;
 import java.util.List;
 
-abstract public class CollectionItemAdapter<T> implements CollectionItem {
-    protected ValueGroup valueGroup;
+abstract public class CollectionItemAdapter<T> implements DBCollectionItem {
+    protected transient ValueGroup valueGroup;
     private String user = "local";
 
-    {
-        valueGroup = new ValueGroup("collectionItem");
+    public CollectionItemAdapter(Long id) {
     }
 
-    public CollectionItemAdapter(Long id) {
-        setId(id);
-
+    @Override
+    public void setupValueTree() {
+        valueGroup = new ValueGroup("collectionItem");
         valueGroup.addValueNode(new Value("id",
                 () -> getId().toString(),
                 (str) -> setId(Long.valueOf(str)))
@@ -113,6 +113,29 @@ abstract public class CollectionItemAdapter<T> implements CollectionItem {
     }
 
     @Override
+    public List<DBRequest> deleteAll(String db_name, String user) {
+        List<DBRequest> deleteAll = new ArrayList<>();
+        deleteAll.add(DBCollectionItem.deleteAllByUser(db_name, user));
+        return deleteAll;
+    }
+
+    @Override
+    public List<DBRequest> deleteAllCompletely(String db_name) {
+        List<DBRequest> deleteAll = new ArrayList<>();
+        deleteAll.add(DBCollectionItem.deleteAll(db_name));
+        return deleteAll;
+    }
+
+    @Override
+    public List<DBRequest> delete(String db_name) {
+        List<DBRequest> dbRequests = new ArrayList<>();
+        String where = "WHERE \"id\" = ?";
+        String deleteWorker = "DELETE FROM " + db_name + " " + where;
+        dbRequests.add(new DBRequest(deleteWorker, getId()));
+        return dbRequests;
+    }
+
+    @Override
     public Element parse(Document document) {
         return valueGroup.parse(document);
     }
@@ -121,4 +144,6 @@ abstract public class CollectionItemAdapter<T> implements CollectionItem {
     public void parse(Element element) {
         valueGroup.parse(element);
     }
+
+
 }

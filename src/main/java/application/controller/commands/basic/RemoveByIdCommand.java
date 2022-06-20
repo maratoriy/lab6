@@ -1,16 +1,16 @@
 package application.controller.commands.basic;
 
-import application.model.collection.CollectionManager;
 import application.controller.commands.AbstractCommand;
 import application.controller.commands.CommandParameters;
 import application.controller.commands.exceptions.InvalidCommandParamException;
-import application.view.ConsolePrinter;
+import application.model.collection.CollectionManager;
+import application.view.console.ConsolePrinter;
 
 public class RemoveByIdCommand extends AbstractCommand {
     private final CollectionManager<?> collectionManager;
 
     public RemoveByIdCommand(CollectionManager<?> collectionManager) {
-        super("remove_by_id", "remove element from the collection by id");
+        super("remove_by_id");
         this.collectionManager = collectionManager;
     }
 

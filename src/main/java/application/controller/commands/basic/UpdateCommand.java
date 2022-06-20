@@ -1,14 +1,14 @@
 package application.controller.commands.basic;
 
-import application.model.collection.CollectionItem;
-import application.model.collection.CollectionManager;
-import application.model.data.exceptions.UniqueFieldException;
 import application.controller.actions.ActionManager;
 import application.controller.commands.AbstractCommand;
 import application.controller.commands.CommandParameters;
 import application.controller.commands.exceptions.InvalidCommandParamException;
 import application.controller.input.InputManager;
-import application.view.ConsolePrinter;
+import application.model.collection.CollectionItem;
+import application.model.collection.CollectionManager;
+import application.model.data.exceptions.UniqueFieldException;
+import application.view.console.ConsolePrinter;
 
 public class UpdateCommand<T extends CollectionItem> extends AbstractCommand {
     private final CollectionManager<T> collectionManager;
@@ -16,7 +16,7 @@ public class UpdateCommand<T extends CollectionItem> extends AbstractCommand {
     private final InputManager inputManager;
 
     public UpdateCommand(CollectionManager<T> collectionManager, ActionManager actionManager, InputManager inputManager) {
-        super("update", "update item by its id");
+        super("update");
         this.collectionManager = collectionManager;
         this.actionManager = actionManager;
         this.inputManager = inputManager;

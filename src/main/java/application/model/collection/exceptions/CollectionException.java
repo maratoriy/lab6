@@ -1,6 +1,7 @@
 package application.model.collection.exceptions;
 
 public class CollectionException extends RuntimeException {
+
     public CollectionException(String message) {
         super(message);
     }
@@ -12,4 +13,5 @@ public class CollectionException extends RuntimeException {
     public CollectionException(String message, Throwable cause) {
         super(String.format("%s. Cause: %s", message, cause.getMessage()));
     }
+
 }

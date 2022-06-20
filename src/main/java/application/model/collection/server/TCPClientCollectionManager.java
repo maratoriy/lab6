@@ -1,19 +1,20 @@
 package application.model.collection.server;
 
 import application.controller.exceptions.CriticalErrorException;
-import application.controller.server.Message;
+import application.controller.server.AuthorisationManager;
 import application.controller.server.TCPCommunicator;
 import application.controller.server.exceptions.ServerException;
 import application.controller.server.handlers.AuthorizationHandler;
+import application.controller.server.messages.ClientMessage;
+import application.controller.server.messages.Message;
 import application.model.collection.AbstractCollectionManager;
-import application.model.collection.CollectionItem;
 import application.model.collection.CollectionManager;
-import application.view.StringTable;
+import application.view.datamodels.StringTable;
 
 import java.io.IOException;
 import java.util.List;
 
-abstract public class TCPClientCollectionManager<T extends CollectionItem>
+abstract public class TCPClientCollectionManager<T extends UserItem>
         implements CollectionManager<T>, AuthorisationManager {
     private final TCPCommunicator tcpCommunicator;
 
@@ -28,6 +29,7 @@ abstract public class TCPClientCollectionManager<T extends CollectionItem>
 
     @Override
     public void init() {
+        if (isInit()) return;
         try {
             Thread.sleep(1000);
             tcpCommunicator.connect();
@@ -38,36 +40,37 @@ abstract public class TCPClientCollectionManager<T extends CollectionItem>
         }
     }
 
-    public Message createConcreteMessage(Message.Type type) {
-        return new Message(type)
-                .put("login", login)
-                .put("password", password);
+    public ClientMessage createConcreteMessage(Message.Type type) {
+        return new ClientMessage(type, login, password);
     }
 
     @Override
-    public boolean login(String login, String password) {
+    public Message login(String login, String password) {
+        init();
         this.login = login;
         this.password = AuthorizationHandler.hashPassword(password, "default");
-        return (Boolean) send(createConcreteMessage(Message.Type.AUTH)
+        return send(createConcreteMessage(Message.Type.AUTH)
                 .put("action", "login")
-        ).get("accepted");
+        );
     }
 
     @Override
-    public boolean register(String login, String password) {
+    public Message register(String login, String password) {
+        init();
         this.login = login;
         this.password = AuthorizationHandler.hashPassword(password, "default");
-        return (Boolean) send(createConcreteMessage(Message.Type.AUTH)
+        return send(createConcreteMessage(Message.Type.AUTH)
                 .put("action", "register")
-        ).get("accepted");
+        );
     }
 
-    private Message createCommand(String commandName) {
+    private ClientMessage createCommand(String commandName) {
         return createConcreteMessage(Message.Type.COMMAND)
                 .put("commandName", commandName);
     }
 
-    private Message send(Message command) {
+    synchronized private Message send(ClientMessage command) {
+        init();
         tcpCommunicator.write(command);
         Message respond = tcpCommunicator.read();
         if (respond.getType() == Message.Type.ERROR) {
@@ -88,9 +91,9 @@ abstract public class TCPClientCollectionManager<T extends CollectionItem>
 
     @Override
     public T generateNew() {
-        T elem = getElemsClass().cast(send(createCommand("generateNew")).get("item"));
-        elem.setUser(login);
-        return elem;
+        T item = getElemsClass().cast(send(createCommand("generateNew")).get("item"));
+        item.setupValueTree();
+        return item;
     }
 
     @Override
@@ -114,9 +117,9 @@ abstract public class TCPClientCollectionManager<T extends CollectionItem>
     }
 
     @Override
-    public void insertAtIndex(Long id, T item) {
+    public void insertAtIndex(Integer index, T item) {
         send(createCommand("insertAtIndex")
-                .put("index", id)
+                .put("index", index)
                 .put("item", item)
         );
     }
@@ -146,11 +149,13 @@ abstract public class TCPClientCollectionManager<T extends CollectionItem>
 
     @Override
     public T getById(Long id) {
-        return getElemsClass().cast(
+        T item = getElemsClass().cast(
                 send(
                         createCommand("getById")
                                 .put("id", id)
                 ).get("item"));
+        item.setupValueTree();
+        return item;
     }
 
     @Override
@@ -180,7 +185,9 @@ abstract public class TCPClientCollectionManager<T extends CollectionItem>
     @SuppressWarnings("unchecked")
     @Override
     public List<T> asList() {
-        return (List<T>) send(createCommand("asList"))
+        List<T> list = (List<T>) send(createCommand("asList"))
                 .get("list");
+        list.forEach(T::setupValueTree);
+        return list;
     }
 }

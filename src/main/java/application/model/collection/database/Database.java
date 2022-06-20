@@ -8,7 +8,9 @@ import java.io.IOException;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Properties;
 
 public class Database {
@@ -20,7 +22,6 @@ public class Database {
 
     static String USER;
     static String PASS;
-
 
 
     private Database() throws SQLException, IOException {
@@ -37,19 +38,19 @@ public class Database {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        Database.PASS= (property.getProperty("PASS"));
+        Database.PASS = (property.getProperty("PASS"));
         Database.USER = property.getProperty("USER");
+        String port = property.getProperty("PORT");
+        String dbname = property.getProperty("DBNAME");
 
-//        String url = String.format("jdbc:postgresql://127.0.0.1:5432/studs");
-        String url = String.format("jdbc:postgresql://pg:5432/studs");
+        String url = String.format("jdbc:postgresql://%s:5432/%s", port, dbname);
         logger.info(url);
         connection = DriverManager.getConnection(url, USER, PASS);
         logger.info(String.valueOf(connection));
     }
 
 
-
-    public static Database getInstance(){
+    public static Database getInstance() {
         if (instance == null) {
             synchronized (Database.class) {
                 if (instance == null) {
@@ -64,10 +65,11 @@ public class Database {
         }
         return instance;
     }
+
     private PreparedStatement parseSql(String sql, Object[] args) throws SQLException {
         PreparedStatement stmt = connection.prepareStatement(sql);
-        for (int i = 1; i<=args.length; i++) {
-            Object arg = args[i-1];
+        for (int i = 1; i <= args.length; i++) {
+            Object arg = args[i - 1];
             if (arg == null) {
                 stmt.setNull(i, Types.OTHER);
             } else if (arg instanceof String) {
@@ -75,25 +77,41 @@ public class Database {
             } else if (arg instanceof Enum) {
                 stmt.setObject(i, ((Enum<?>) arg).name(), Types.OTHER);
             } else if (arg instanceof Integer) {
-                stmt.setInt(i, (Integer)arg);
+                stmt.setInt(i, (Integer) arg);
             } else if (arg instanceof Long) {
-                stmt.setLong(i, (Long)arg);
+                stmt.setLong(i, (Long) arg);
             } else if (arg instanceof Double) {
-                stmt.setDouble(i, (Double)arg);
+                stmt.setDouble(i, (Double) arg);
             } else if (arg instanceof Float) {
-                stmt.setFloat(i, (Float)arg);
+                stmt.setFloat(i, (Float) arg);
             } else if (arg instanceof LocalDate) {
                 stmt.setObject(i, arg);
             } else if (arg instanceof Date) {
                 stmt.setDate(i, new java.sql.Date(((Date) arg).getTime()));
-            } else if (arg instanceof  ZonedDateTime){
-                stmt.setDate(i, new java.sql.Date(((Date) Date.from(((ZonedDateTime)arg).toInstant())).getTime()));
+            } else if (arg instanceof ZonedDateTime) {
+                stmt.setDate(i, new java.sql.Date(Date.from(((ZonedDateTime) arg).toInstant()).getTime()));
             } else {
                 stmt.close();
                 throw new SQLException("unknown data type");
             }
         }
         return stmt;
+    }
+
+    public void executeUpdates(List<DBRequest> dbRequests) throws SQLException {
+        for (DBRequest iter :
+                dbRequests) {
+            executeUpdate(iter);
+        }
+    }
+
+    public List<ResultSet> executeQueries(List<DBRequest> dbRequests) throws SQLException {
+        List<ResultSet> resultSets = new ArrayList<>();
+        for (DBRequest iter :
+                dbRequests) {
+            resultSets.add(executeQuery(iter));
+        }
+        return resultSets;
     }
 
     public ResultSet executeQuery(DBRequest dbRequest) throws SQLException {
@@ -115,6 +133,7 @@ public class Database {
         stmt.close();
         return answer;
     }
+
     public void closeQuery() throws SQLException {
         stmt.close();
     }

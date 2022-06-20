@@ -1,18 +1,14 @@
 package application.controller.server.handlers;
 
-import application.controller.server.Message;
 import application.controller.server.client.ServerClient;
+import application.controller.server.messages.ClientMessage;
 
 abstract public class AbstractMessageHandler implements MessageHandler {
     protected AbstractMessageHandler next;
-    private Message.Type type;
 
     public AbstractMessageHandler() {
     }
 
-    public AbstractMessageHandler(Message.Type type) {
-        this.type = type;
-    }
 
     public AbstractMessageHandler addNext(AbstractMessageHandler next) {
         if (this.next != null)
@@ -21,21 +17,28 @@ abstract public class AbstractMessageHandler implements MessageHandler {
         return this;
     }
 
-    public void setType(Message.Type type) {
-        this.type = type;
+
+    abstract protected void handleAction(ServerClient client, ClientMessage message);
+
+    final public static class NewStreamPipe extends AbstractMessageHandler {
+
+        @Override
+        public void handleObject(ServerClient client, ClientMessage message) {
+            if (next != null) {
+                handleAction(client, message);
+            }
+        }
+
+        @Override
+        protected void handleAction(ServerClient client, ClientMessage message) {
+            Runnable threadRun = () -> {
+                next.handleObject(client, message);
+            };
+            Thread newThread = new Thread(threadRun);
+            newThread.setDaemon(true);
+            newThread.start();
+        }
+
     }
 
-    public Message.Type getType() {
-        return type;
-    }
-
-    @Override
-    public void handleObject(ServerClient client, Message message) {
-        if (message.getType() == type)
-            handleAction(client, message);
-        else if (next != null)
-            next.handleObject(client, message);
-    }
-
-    abstract protected void handleAction(ServerClient client, Message message);
 }

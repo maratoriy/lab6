@@ -30,6 +30,17 @@ public class ScriptInputStrategy implements InputStrategy {
         push(this);
     }
 
+    public ScriptInputStrategy(File file) {
+        this.file = file;
+        if (!file.canRead()) throw new OpenFileException(getAbsPath(), "Denied read");
+        try {
+            this.scanner = new Scanner(file);
+        } catch (FileNotFoundException e) {
+            throw new OpenFileException(getAbsPath(), e.getMessage());
+        }
+        push(this);
+    }
+
     @Override
     public StrategyType getType() {
         return StrategyType.SCRIPT;
@@ -47,7 +58,6 @@ public class ScriptInputStrategy implements InputStrategy {
     static public void clearStack() {
         scriptStack.clear();
     }
-
 
 
     static public long scriptStackSize() {
@@ -68,8 +78,7 @@ public class ScriptInputStrategy implements InputStrategy {
             if (ScriptInputStrategy.scriptStackSize() > 0) {
                 scanner = scriptStack.pop().scanner;
                 return getLine();
-            }
-            else
+            } else
                 throw new EndOfTheScriptException();
         }
     }

@@ -1,15 +1,15 @@
 package application.controller.commands.basic;
 
-import application.model.collection.CollectionManager;
 import application.controller.commands.AbstractCommand;
 import application.controller.commands.CommandParameters;
-import application.view.ConsolePrinter;
+import application.model.collection.CollectionManager;
+import application.view.console.ConsolePrinter;
 
 public class ClearCommand extends AbstractCommand {
     private final CollectionManager<?> collectionManager;
 
     public ClearCommand(CollectionManager<?> collectionManager) {
-        super("clear", "deletes all the elements from collection");
+        super("clear");
         this.collectionManager = collectionManager;
     }
 

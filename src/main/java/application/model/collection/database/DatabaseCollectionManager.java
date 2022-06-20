@@ -1,29 +1,37 @@
 package application.model.collection.database;
 
 import application.controller.server.exceptions.ServerException;
-import application.model.collection.CollectionItem;
+import application.model.collection.AbstractCollectionManager;
 import application.model.collection.CollectionManager;
 import application.model.collection.exceptions.CollectionException;
-import application.model.collection.exceptions.NoSuchElemException;
-import application.view.StringTable;
+import application.model.collection.exceptions.InvalidUserException;
+import application.model.collection.server.UserCollectionManager;
+import application.view.datamodels.StringTable;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
+import java.time.LocalDateTime;
 import java.util.List;
 
-public class DatabaseCollectionManager<T extends CollectionItem> implements CollectionManager<T> {
-    private final CollectionManager<T> wrappedCollectionManager;
+public class DatabaseCollectionManager<T extends DBCollectionItem> implements UserCollectionManager<T> {
+    private final AbstractCollectionManager<T> wrappedCollectionManager;
     private final Database database;
-    static public String dataBaseName = "collection";
+    public String dataBaseName = "collection";
+    static public final String admin = "admin";
+
     {
         database = Database.getInstance();
     }
 
     public void parse() {
         try {
+            ResultSet infoSet = database.executeQuery("SELECT * from \"collectionInfo\"");
+            if(infoSet.next()) wrappedCollectionManager.setInitializationTime(LocalDateTime.parse(infoSet.getString("initializationTime")));
+            else {
+                database.executeUpdate("INSERT INTO \"collectionInfo\" VALUES(?)", wrappedCollectionManager.getInitializationTime().toString());
+            }
             ResultSet resultSet = database.executeQuery("SELECT * FROM " + dataBaseName);
-            while(resultSet.next()) {
+            while (resultSet.next()) {
                 T item = generateNew();
                 item.parse(resultSet);
                 wrappedCollectionManager.add(item);
@@ -33,83 +41,37 @@ public class DatabaseCollectionManager<T extends CollectionItem> implements Coll
         }
     }
 
-    public DatabaseCollectionManager(CollectionManager<T> wrappedCollectionManager) {
+    public DatabaseCollectionManager(AbstractCollectionManager<T> wrappedCollectionManager) {
         this.wrappedCollectionManager = wrappedCollectionManager;
     }
 
-    private static DBRequest selectByIdDB(String user, Long id) {
-        String sql = "SELECT * FROM "+dataBaseName+" WHERE \"user\" = ? AND \"id\" = ?";
-        return new DBRequest(sql, user, id);
-    }
-
-    synchronized public boolean removeById(String user, Long id) {
-        try {
-            ResultSet resultSet = database.executeQuery(selectByIdDB(user, id));
-            if(!resultSet.next()) throw new NoSuchElemException();
-            return wrappedCollectionManager.removeById(id);
-        } catch (SQLException e) {
-            throw new ServerException(e);
-        }
-    }
-
-    synchronized public void updateById(String user, Long id, T item) {
-        try {
-            ResultSet resultSet = database.executeQuery(selectByIdDB(user, id));
-            if(!resultSet.next()) throw new NoSuchElemException();
-            List<DBRequest> dbRequests = item.update(dataBaseName, true);
-            doRequests(dbRequests);
-            wrappedCollectionManager.updateById(id, item);
-        } catch (SQLException e) {
-            throw new ServerException(e);
-        }
-
-    }
-
-
-    synchronized public void clear(String user) {
-        try {
-            List<Long> idsToDelete = new ArrayList<>();
-            ResultSet resultSet = database.executeQuery(DBPerformable.selectAllDB(dataBaseName, user));
-            while(resultSet.next()) {
-                idsToDelete.add(resultSet.getLong("id"));
-            }
-            if (idsToDelete.size()>0) {
-                List<DBRequest> dbRequests = wrappedCollectionManager.getById(idsToDelete.get(0)).deleteAll(dataBaseName, user);
-                for (DBRequest iter:
-                     dbRequests) {
-                    database.executeUpdate(iter);
-                }
-                for (Long id:
-                     idsToDelete) {
-                    wrappedCollectionManager.removeById(id);
-                }
-            }
-        } catch (SQLException e) {
-            throw new CollectionException(e);
-        }
-    }
 
     @Override
     public int size() {
         return wrappedCollectionManager.size();
     }
 
-    private void doRequests(List<DBRequest> dbRequests) throws SQLException {
-        for (DBRequest iter:
-                dbRequests) {
-            database.executeUpdate(iter);
+    @Override
+    public void clear(String user) {
+        try {
+            List<T> filteredByUser = wrappedCollectionManager.asFilteredList(item -> item.getUser().equals(user));
+            if (filteredByUser.size() == 0) return;
+            T exampleItem = filteredByUser.stream().findAny().get();
+            filteredByUser.forEach(item -> wrappedCollectionManager.removeById(item.getId()));
+            database.executeUpdates(exampleItem.deleteAll(dataBaseName, user));
+        } catch (SQLException e) {
+            throw new CollectionException(e);
         }
     }
 
     @Override
     public void clear() {
         try {
-            List<DBRequest> dbRequests = generateNew().deleteAllCompletely(dataBaseName);
-            doRequests(dbRequests);
             wrappedCollectionManager.clear();
+            List<DBRequest> dbRequests = generateNew().deleteAllCompletely(dataBaseName);
+            database.executeUpdates(dbRequests);
         } catch (SQLException e) {
-            e.printStackTrace();
-            throw new ServerException(e);
+            throw new CollectionException(e);
         }
     }
 
@@ -124,15 +86,29 @@ public class DatabaseCollectionManager<T extends CollectionItem> implements Coll
     }
 
     @Override
-    public void insertAtIndex(Long index, T item) {
+    public void insertAtIndex(Integer index, T item) {
+        insert(item);
         wrappedCollectionManager.insertAtIndex(index, item);
+    }
+
+    @Override
+    public void updateById(String user, Long id, T item) {
+        try {
+            if (!getById(id).getUser().equals(user)) throw new InvalidUserException();
+            List<DBRequest> dbRequests = item.update(dataBaseName);
+            database.executeUpdates(dbRequests);
+            wrappedCollectionManager.updateById(id, item);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new ServerException(e);
+        }
     }
 
     @Override
     public void updateById(Long id, T item) {
         try {
-            List<DBRequest> dbRequests = item.update(dataBaseName, true);
-            doRequests(dbRequests);
+            List<DBRequest> dbRequests = item.update(dataBaseName);
+            database.executeUpdates(dbRequests);
             wrappedCollectionManager.updateById(id, item);
         } catch (SQLException e) {
             e.printStackTrace();
@@ -145,16 +121,22 @@ public class DatabaseCollectionManager<T extends CollectionItem> implements Coll
         return wrappedCollectionManager.countByValue(valueName, value);
     }
 
-    @Override
-    synchronized public void add(T item) {
+    private void insert(T item) {
         try {
             List<DBRequest> dbRequests = item.insert(dataBaseName);
-
-            doRequests(dbRequests);
-            wrappedCollectionManager.add(item);
+            database.executeUpdates(dbRequests);
+            ResultSet resultSet = database.executeQuery("SELECT currval('nextval')");
+            resultSet.next();
+            item.setId(resultSet.getLong("currval"));
         } catch (SQLException e) {
             throw new ServerException(e);
         }
+    }
+
+    @Override
+    synchronized public void add(T item) {
+        insert(item);
+        wrappedCollectionManager.add(item);
     }
 
     @Override
@@ -164,7 +146,16 @@ public class DatabaseCollectionManager<T extends CollectionItem> implements Coll
 
     @Override
     public T generateNew() {
-        return wrappedCollectionManager.generateNew();
+        T item = wrappedCollectionManager.generateNew();
+        item.setUser(admin);
+        return item;
+    }
+
+    @Override
+    public T generateNew(String user) {
+        T item = wrappedCollectionManager.generateNew();
+        item.setUser(user);
+        return item;
     }
 
     @Override
@@ -173,15 +164,29 @@ public class DatabaseCollectionManager<T extends CollectionItem> implements Coll
     }
 
     @Override
-    public boolean removeById(Long id) {
+    public boolean removeById(String user, Long id) {
         try {
-            doRequests(getById(id).delete(dataBaseName, false));
+            T item = getById(id);
+            if (!item.getUser().equals(user)) throw new InvalidUserException();
+            database.executeUpdates(getById(id).delete(dataBaseName));
             return wrappedCollectionManager.removeById(id);
         } catch (SQLException e) {
             e.printStackTrace();
             throw new ServerException(e);
         }
     }
+
+    @Override
+    public boolean removeById(Long id) {
+        try {
+            database.executeUpdates(getById(id).delete(dataBaseName));
+            return wrappedCollectionManager.removeById(id);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new ServerException(e);
+        }
+    }
+
 
     @Override
     public StringTable getCollectionTable() {

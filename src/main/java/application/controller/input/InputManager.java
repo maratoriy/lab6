@@ -1,7 +1,7 @@
 package application.controller.input;
 
 public class InputManager {
-    private InputStrategy inputStrategy;
+    private volatile InputStrategy inputStrategy;
 
     public InputManager(InputStrategy inputStrategy) {
         this.inputStrategy = inputStrategy;
